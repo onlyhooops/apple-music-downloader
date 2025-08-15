@@ -93,7 +93,7 @@ func loadConfig(configPath string) error {
 	if useAutoDetect {
 		fmt.Println(green("'max-path-length' 未在配置中强制指定, 将自动检测系统默认值。"))
 		if runtime.GOOS == "windows" {
-			maxPathLength = 255
+			maxPathLength = 200
 			fmt.Printf("%s%d\n",
 				green("检测到 Windows 系统, 已自动设置最大路径长度限制为: "),
 				maxPathLength,
@@ -2138,3 +2138,4 @@ func getToken() (string, error) {
 	}
 	return token, nil
 }
+
