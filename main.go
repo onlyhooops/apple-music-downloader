@@ -1,5 +1,4 @@
 package main
-
 import (
 	"bufio"
 	"bytes"
@@ -2050,3 +2049,4 @@ func getToken() (string, error) {
 	}
 	return token, nil
 }
+
