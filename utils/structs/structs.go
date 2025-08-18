@@ -1,8 +1,16 @@
 package structs
 
+type Account struct {
+	Name               string `yaml:"name"`
+	Storefront         string `yaml:"storefront"`
+	MediaUserToken     string `yaml:"media-user-token"`
+	AuthorizationToken string `yaml:"authorization-token"`
+	DecryptM3u8Port    string `yaml:"decrypt-m3u8-port"`
+	GetM3u8Port        string `yaml:"get-m3u8-port"`
+}
+
 type ConfigSet struct {
-	MediaUserToken          string `yaml:"media-user-token"`
-	AuthorizationToken      string `yaml:"authorization-token"`
+	Accounts []Account `yaml:"accounts"`
 	Language                string `yaml:"language"`
 	SaveLrcFile             bool   `yaml:"save-lrc-file"`
 	LrcType                 string `yaml:"lrc-type"`
@@ -24,8 +32,6 @@ type ConfigSet struct {
 	CleanChoice             string `yaml:"clean-choice"`
 	AppleMasterChoice       string `yaml:"apple-master-choice"`
 	MaxMemoryLimit          int    `yaml:"max-memory-limit"`
-	DecryptM3u8Port         string `yaml:"decrypt-m3u8-port"`
-	GetM3u8Port             string `yaml:"get-m3u8-port"`
 	GetM3u8Mode             string `yaml:"get-m3u8-mode"`
 	GetM3u8FromDevice       bool   `yaml:"get-m3u8-from-device"`
 	AacType                 string `yaml:"aac-type"`
@@ -37,10 +43,9 @@ type ConfigSet struct {
 	MVAudioType             string `yaml:"mv-audio-type"`
 	MVMax                   int    `yaml:"mv-max"`
 	AacDownloadThreads      int    `yaml:"aac_downloadthreads"`
-    LosslessDownloadThreads int    `yaml:"lossless_downloadthreads"`
-    HiresDownloadThreads    int    `yaml:"hires_downloadthreads"`
-    ChunkDownloadThreads    int    `yaml:"chunk_downloadthreads"`
-    MaxPathLength           int    `yaml:"max-path-length"`
+	LosslessDownloadThreads int    `yaml:"lossless_downloadthreads"`
+	HiresDownloadThreads    int    `yaml:"hires_downloadthreads"`
+	ChunkDownloadThreads    int    `yaml:"chunk_downloadthreads"`
 }
 
 type Counter struct {
