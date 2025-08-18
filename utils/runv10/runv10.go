@@ -672,4 +672,3 @@ func RunOrchestrated(adamId string, playlistUrl string, targetStorefront string,
 	fmt.Println("##################################################")
 	return fmt.Errorf("所有服务均操作失败，最后一次的错误为: %w", lastError)
 }
-
