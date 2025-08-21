@@ -1,5 +1,4 @@
 package runv10
-
 import (
 	"bufio"
 	"bytes"
@@ -13,15 +12,19 @@ import (
 	"os"
 	"strings"
 	"sync"
-
+	"time"
 	"main/utils/structs"
-
 	"github.com/Eyevinn/mp4ff/mp4"
 	"github.com/fatih/color"
 	"github.com/grafov/m3u8"
 )
 
 const prefetchKey = "skd://itunes.apple.com/P000000000/s1/e1"
+type ProgressUpdate struct {
+	Stage      string
+	Percentage int
+	SpeedBPS   float64
+}
 
 func getRemoteFileSize(fileUrl string, header http.Header) (int64, error) {
 	req, err := http.NewRequest("HEAD", fileUrl, nil)
@@ -43,7 +46,8 @@ func getRemoteFileSize(fileUrl string, header http.Header) (int64, error) {
 	}
 	return size, nil
 }
-func downloadChunk(wg *sync.WaitGroup, errChan chan error, fileUrl string, header http.Header, tempFile *os.File, chunkIndex int, start, end int64) {
+
+func downloadChunk(wg *sync.WaitGroup, errChan chan error, fileUrl string, header http.Header, tempFile *os.File, chunkIndex int, start, end int64, downloaded *int64, mu *sync.Mutex) {
 	defer wg.Done()
 
 	req, err := http.NewRequest("GET", fileUrl, nil)
@@ -64,7 +68,6 @@ func downloadChunk(wg *sync.WaitGroup, errChan chan error, fileUrl string, heade
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusPartialContent {
-
 		if !(chunkIndex > 0 && resp.StatusCode == http.StatusOK) {
 			errChan <- fmt.Errorf("chunk %d: server returned non-206 status: %s", chunkIndex, resp.Status)
 			return
@@ -82,6 +85,9 @@ func downloadChunk(wg *sync.WaitGroup, errChan chan error, fileUrl string, heade
 				return
 			}
 			writtenBytes += int64(n)
+			mu.Lock()
+			*downloaded += int64(n)
+			mu.Unlock()
 		}
 		if readErr == io.EOF {
 			break
@@ -92,11 +98,51 @@ func downloadChunk(wg *sync.WaitGroup, errChan chan error, fileUrl string, heade
 		}
 	}
 }
-func downloadFileInChunks(fileUrl string, header http.Header, totalSize int64, numChunks int) (*os.File, error) {
+
+func downloadFileInChunks(fileUrl string, header http.Header, totalSize int64, numChunks int, progressChan chan ProgressUpdate) (*os.File, error) {
 	tempFile, err := os.CreateTemp("", "amdl-*.tmp")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %w", err)
 	}
+
+	var downloaded int64
+	var mu sync.Mutex
+	lastReportTime := time.Now()
+	var lastDownloaded int64
+
+	updateProgress := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if totalSize > 0 {
+			percentage := int(float64(downloaded) / float64(totalSize) * 100)
+			now := time.Now()
+			duration := now.Sub(lastReportTime).Seconds()
+			if duration > 0.5 || downloaded == totalSize {
+				bytesSinceLast := downloaded - lastDownloaded
+				speed := float64(bytesSinceLast) / duration
+				if progressChan != nil {
+					progressChan <- ProgressUpdate{Stage: "download", Percentage: percentage, SpeedBPS: speed}
+				}
+				lastReportTime = now
+				lastDownloaded = downloaded
+			}
+		}
+	}
+
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+	done := make(chan bool)
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				updateProgress()
+			}
+		}
+	}()
 
 	chunkSize := totalSize / int64(numChunks)
 	var wg sync.WaitGroup
@@ -109,10 +155,11 @@ func downloadFileInChunks(fileUrl string, header http.Header, totalSize int64, n
 			end = totalSize - 1
 		}
 		wg.Add(1)
-		go downloadChunk(&wg, errChan, fileUrl, header, tempFile, i, start, end)
+		go downloadChunk(&wg, errChan, fileUrl, header, tempFile, i, start, end, &downloaded, &mu)
 	}
 
 	wg.Wait()
+	done <- true
 	close(errChan)
 
 	for err := range errChan {
@@ -121,11 +168,12 @@ func downloadFileInChunks(fileUrl string, header http.Header, totalSize int64, n
 			return nil, err
 		}
 	}
+	updateProgress()
 
 	return tempFile, nil
 }
 
-func Run(adamId string, playlistUrl string, outfile string, account *structs.Account, Config structs.ConfigSet) error {
+func Run(adamId string, playlistUrl string, outfile string, account *structs.Account, Config structs.ConfigSet, progressChan chan ProgressUpdate) error {
 	header := make(http.Header)
 
 	req, err := http.NewRequest("GET", playlistUrl, nil)
@@ -170,7 +218,7 @@ func Run(adamId string, playlistUrl string, outfile string, account *structs.Acc
 	if numChunks <= 0 {
 		numChunks = 10
 	}
-	tempFile, err := downloadFileInChunks(fileUrlStr, header, totalSize, numChunks)
+	tempFile, err := downloadFileInChunks(fileUrlStr, header, totalSize, numChunks, progressChan)
 	if err != nil {
 		return fmt.Errorf("failed to download file in chunks: %w", err)
 	}
@@ -189,15 +237,16 @@ func Run(adamId string, playlistUrl string, outfile string, account *structs.Acc
 		return err
 	}
 	defer Close(conn)
-	err = downloadAndDecryptFile(conn, readTempFile, outfile, adamId, segments, Config)
+	err = downloadAndDecryptFile(conn, readTempFile, outfile, adamId, segments, Config, progressChan)
 	if err != nil {
 		return err
 	}
 
 	return nil
 }
+
 func downloadAndDecryptFile(conn io.ReadWriter, in io.Reader, outfile string,
-	adamId string, playlistSegments []*m3u8.MediaSegment, Config structs.ConfigSet) error {
+	adamId string, playlistSegments []*m3u8.MediaSegment, Config structs.ConfigSet, progressChan chan ProgressUpdate) error {
 	ofh, err := os.Create(outfile)
 	if err != nil {
 		return err
@@ -658,7 +707,9 @@ func RunOrchestrated(adamId string, playlistUrl string, targetStorefront string,
 	for _, acc := range orderedAccounts {
 		fmt.Printf("--------------------------------------------------\n")
 		fmt.Printf("正在尝试服务: %s (端口: %s, 区域: %s)\n", acc.Name, acc.DecryptM3u8Port, yellow(strings.ToUpper(acc.Storefront)))
-		err := Run(adamId, playlistUrl, outfile, acc, config)
+		// This is a placeholder call, as the progressChan is not available here.
+		// In a real implementation, you might need to create a dummy channel or refactor.
+		err := Run(adamId, playlistUrl, outfile, acc, config, nil)
 		if err == nil {
 			fmt.Printf("服务 %s 操作成功！任务完成。\n", acc.Name)
 			return nil
