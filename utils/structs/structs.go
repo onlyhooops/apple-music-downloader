@@ -46,6 +46,7 @@ type ConfigSet struct {
 	LosslessDownloadThreads int    `yaml:"lossless_downloadthreads"`
 	HiresDownloadThreads    int    `yaml:"hires_downloadthreads"`
 	ChunkDownloadThreads    int    `yaml:"chunk_downloadthreads"`
+	MaxPathLength           int    `yaml:"MaxPathLength"`
 }
 
 type Counter struct {
