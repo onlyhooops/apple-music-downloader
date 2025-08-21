@@ -449,41 +449,33 @@ func ExtMvData(keyAndUrls string, savePath string) error {
 
 	// 启动下载 Goroutines
 	for i, url := range urls {
-		// 在启动 Goroutine 前，向 limiter 发送一个值来“获取”一个槽位
-		// 如果 limiter 已满 (达到10个)，这里会阻塞，直到有其他任务完成并释放槽位
 		//fmt.Printf("请求启动任务 %d...\n", i)
 		limiter <- struct{}{}
 		//fmt.Printf("...任务 %d 已启动\n", i)
 
 		downloadWg.Add(1)
-		// 将 limiter 传递给下载函数
 		go downloadSegment(url, i, &downloadWg, segmentsChan, client, limiter)
 	}
 
-	// 等待所有下载任务完成
 	downloadWg.Wait()
-	// 下载完成后，关闭 Channel。写入 Goroutine 会在处理完 Channel 中所有数据后退出。
 	close(segmentsChan)
 
-	// 等待写入 Goroutine 完成所有写入和缓冲处理
 	writerWg.Wait()
 
-	// 显式关闭文件（defer会再次调用，但重复关闭是安全的）
 	if err := tempFile.Close(); err != nil {
-		// fmt.Printf("关闭临时文件失败: %v\n", err)
+		
 		return err
 	}
-	// fmt.Println("\nDownloaded.") // UI错乱元凶
+	
 
 	cmd1 := exec.Command("mp4decrypt", "--key", key, tempFile.Name(), filepath.Base(savePath))
-	cmd1.Dir = filepath.Dir(savePath) //设置mp4decrypt的工作目录以解决中文路径错误
+	cmd1.Dir = filepath.Dir(savePath)
 	outlog, err := cmd1.CombinedOutput()
 	if err != nil {
-		// fmt.Printf("Decrypt failed: %v\n", err) // UI错乱元凶
-		// fmt.Printf("Output:\n%s\n", outlog)   // UI错乱元凶
+
 		return fmt.Errorf("decrypt failed: %w, output: %s", err, string(outlog))
 	} else {
-		// fmt.Println("Decrypted.") // UI错乱元凶
+
 	}
 	return nil
 }
