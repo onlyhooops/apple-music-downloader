@@ -1283,7 +1283,7 @@ func rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	fmt.Printf("%s %s | %s | %s | %s\n",
-	    green("音源:"),
+		green("音源:"),
 		green(albumQualityString),
 		green(fmt.Sprintf("%d 线程", numThreads)),
 		yellow(regionsStr),
@@ -1385,19 +1385,20 @@ func rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				return
 			}
 
+			red := color.New(color.FgRed).SprintFunc()
+			yellow := color.New(color.FgYellow).SprintFunc()
 			progressChan := make(chan runv10.ProgressUpdate, 10)
 			go func() {
 				for p := range progressChan {
 					speedStr := formatSpeed(p.SpeedBPS)
-					var status string
 					account := &workingAccounts[statusIndex%len(workingAccounts)]
 					accountInfo := fmt.Sprintf("%s 账号", strings.ToUpper(account.Storefront))
-
+					var status string
 					if p.Stage == "decrypt" {
-						status = fmt.Sprintf("%s 解密中 %d%% (%s)", yellow(accountInfo), p.Percentage, speedStr)
-					} else { // "download"
+						status = fmt.Sprintf("%s %s %d%% (%s)", yellow(accountInfo), red("解密中"), p.Percentage, speedStr)
+					} else {
 						status = fmt.Sprintf("%s 下载中 %d%% (%s)", yellow(accountInfo), p.Percentage, speedStr)
-					}
+					}		
 					updateStatus(statusIndex, status, color.New(color.FgYellow).SprintFunc())
 				}
 			}()
