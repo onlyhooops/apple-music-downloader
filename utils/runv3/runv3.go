@@ -39,24 +39,6 @@ type PlaybackLicense struct {
 	Status     int    `json:"status"`
 }
 
-//	func log() {
-//		f, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-//		if err != nil {
-//			slog.Error("error opening file: %s", err)
-//		}
-//		defer func(f *os.File) {
-//			err := f.Close()
-//			if err != nil {
-//				slog.Error("error closing file: %s", err)
-//			}
-//		}(f)
-//		opts := slog.HandlerOptions{
-//			AddSource: true,
-//			Level:     slog.LevelDebug,
-//		}
-//		logger := slog.New(slog.NewJSONHandler(os.Stdout, &opts))
-//		slog.SetDefault(logger)
-//	}
 func getPSSH(contentId string, kidBase64 string) (string, error) {
 	kidBytes, err := base64.StdEncoding.DecodeString(kidBase64)
 	if err != nil {
@@ -488,20 +470,20 @@ func ExtMvData(keyAndUrls string, savePath string) error {
 
 	// 显式关闭文件（defer会再次调用，但重复关闭是安全的）
 	if err := tempFile.Close(); err != nil {
-		fmt.Printf("关闭临时文件失败: %v\n", err)
+		// fmt.Printf("关闭临时文件失败: %v\n", err)
 		return err
 	}
-	fmt.Println("\nDownloaded.")
+	// fmt.Println("\nDownloaded.") // UI错乱元凶
 
 	cmd1 := exec.Command("mp4decrypt", "--key", key, tempFile.Name(), filepath.Base(savePath))
 	cmd1.Dir = filepath.Dir(savePath) //设置mp4decrypt的工作目录以解决中文路径错误
 	outlog, err := cmd1.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Decrypt failed: %v\n", err)
-		fmt.Printf("Output:\n%s\n", outlog)
-		return err
+		// fmt.Printf("Decrypt failed: %v\n", err) // UI错乱元凶
+		// fmt.Printf("Output:\n%s\n", outlog)   // UI错乱元凶
+		return fmt.Errorf("decrypt failed: %w, output: %s", err, string(outlog))
 	} else {
-		fmt.Println("Decrypted.")
+		// fmt.Println("Decrypted.") // UI错乱元凶
 	}
 	return nil
 }
