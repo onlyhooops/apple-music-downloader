@@ -1,4 +1,5 @@
 package runv10
+
 import (
 	"bufio"
 	"bytes"
@@ -13,13 +14,16 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"main/utils/structs"
+
 	"github.com/Eyevinn/mp4ff/mp4"
 	"github.com/fatih/color"
 	"github.com/grafov/m3u8"
 )
 
 const prefetchKey = "skd://itunes.apple.com/P000000000/s1/e1"
+
 type ProgressUpdate struct {
 	Stage      string
 	Percentage int
@@ -237,7 +241,7 @@ func Run(adamId string, playlistUrl string, outfile string, account *structs.Acc
 		return err
 	}
 	defer Close(conn)
-	err = downloadAndDecryptFile(conn, readTempFile, outfile, adamId, segments, Config, progressChan)
+	err = downloadAndDecryptFile(conn, readTempFile, totalSize, outfile, adamId, segments, Config, progressChan)
 	if err != nil {
 		return err
 	}
@@ -245,7 +249,7 @@ func Run(adamId string, playlistUrl string, outfile string, account *structs.Acc
 	return nil
 }
 
-func downloadAndDecryptFile(conn io.ReadWriter, in io.Reader, outfile string,
+func downloadAndDecryptFile(conn io.ReadWriter, in io.Reader, totalSize int64, outfile string,
 	adamId string, playlistSegments []*m3u8.MediaSegment, Config structs.ConfigSet, progressChan chan ProgressUpdate) error {
 	ofh, err := os.Create(outfile)
 	if err != nil {
@@ -277,7 +281,25 @@ func downloadAndDecryptFile(conn io.ReadWriter, in io.Reader, outfile string,
 	}
 
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+
+	var lastReportedOffset uint64
+	lastReportTime := time.Now()
+
 	for i := 0; ; i++ {
+		if totalSize > 0 && time.Since(lastReportTime) > 500*time.Millisecond {
+			elapsedSeconds := time.Since(lastReportTime).Seconds()
+			speed := float64(offset-lastReportedOffset) / elapsedSeconds
+			lastReportedOffset = offset
+			lastReportTime = time.Now()
+			percentage := int(float64(offset) * 100 / float64(totalSize))
+			if percentage > 100 {
+				percentage = 100
+			}
+			if progressChan != nil {
+				progressChan <- ProgressUpdate{Percentage: percentage, SpeedBPS: speed, Stage: "decrypt"}
+			}
+		}
+
 		var frag *mp4.Fragment
 		frag, offset, err = ReadNextFragment(inBuf, offset)
 		if err != nil {
@@ -317,6 +339,11 @@ func downloadAndDecryptFile(conn io.ReadWriter, in io.Reader, outfile string,
 			return err
 		}
 	}
+
+	if progressChan != nil {
+		progressChan <- ProgressUpdate{Percentage: 100, SpeedBPS: 0, Stage: "decrypt"}
+	}
+
 	err = outBuf.Flush()
 	if err != nil {
 		return err
