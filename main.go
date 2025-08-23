@@ -1,5 +1,4 @@
 package main
-
 import (
 	"fmt"
 	"log"
@@ -203,3 +202,4 @@ func main() {
 		core.SharedLock.Unlock()
 	}
 }
+
