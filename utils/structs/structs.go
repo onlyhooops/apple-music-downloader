@@ -1,4 +1,7 @@
 package structs
+type EditorialNotes struct {
+	Standard string `json:"standard"`
+}
 
 type Account struct {
 	Name               string `yaml:"name"`
@@ -10,45 +13,46 @@ type Account struct {
 }
 
 type ConfigSet struct {
-	Accounts []Account `yaml:"accounts"`
-	Language                string `yaml:"language"`
-	SaveLrcFile             bool   `yaml:"save-lrc-file"`
-	LrcType                 string `yaml:"lrc-type"`
-	LrcFormat               string `yaml:"lrc-format"`
-	SaveAnimatedArtwork     bool   `yaml:"save-animated-artwork"`
-	EmbyAnimatedArtwork     bool   `yaml:"emby-animated-artwork"`
-	EmbedLrc                bool   `yaml:"embed-lrc"`
-	EmbedCover              bool   `yaml:"embed-cover"`
-	SaveArtistCover         bool   `yaml:"save-artist-cover"`
-	CoverSize               string `yaml:"cover-size"`
-	CoverFormat             string `yaml:"cover-format"`
-	AlacSaveFolder          string `yaml:"alac-save-folder"`
-	AtmosSaveFolder         string `yaml:"atmos-save-folder"`
-	AlbumFolderFormat       string `yaml:"album-folder-format"`
-	PlaylistFolderFormat    string `yaml:"playlist-folder-format"`
-	ArtistFolderFormat      string `yaml:"artist-folder-format"`
-	SongFileFormat          string `yaml:"song-file-format"`
-	ExplicitChoice          string `yaml:"explicit-choice"`
-	CleanChoice             string `yaml:"clean-choice"`
-	AppleMasterChoice       string `yaml:"apple-master-choice"`
-	MaxMemoryLimit          int    `yaml:"max-memory-limit"`
-	GetM3u8Mode             string `yaml:"get-m3u8-mode"`
-	GetM3u8FromDevice       bool   `yaml:"get-m3u8-from-device"`
-	AacType                 string `yaml:"aac-type"`
-	AlacMax                 int    `yaml:"alac-max"`
-	AtmosMax                int    `yaml:"atmos-max"`
-	LimitMax                int    `yaml:"limit-max"`
-	UseSongInfoForPlaylist  bool   `yaml:"use-songinfo-for-playlist"`
-	DlAlbumcoverForPlaylist bool   `yaml:"dl-albumcover-for-playlist"`
-	MVAudioType             string `yaml:"mv-audio-type"`
-	MVMax                   int    `yaml:"mv-max"`
-	AacDownloadThreads      int    `yaml:"aac_downloadthreads"`
-	LosslessDownloadThreads int    `yaml:"lossless_downloadthreads"`
-	HiresDownloadThreads    int    `yaml:"hires_downloadthreads"`
-	ChunkDownloadThreads    int    `yaml:"chunk_downloadthreads"`
-	BufferSizeKB            int    `yaml:"BufferSizeKB"`
-	NetworkReadBufferKB     int    `yaml:"NetworkReadBufferKB"`
-	MaxPathLength           int    `yaml:"max-path-length"`
+	Accounts                []Account `yaml:"accounts"`
+	Language                string    `yaml:"language"`
+	SaveLrcFile             bool      `yaml:"save-lrc-file"`
+	LrcType                 string    `yaml:"lrc-type"`
+	LrcFormat               string    `yaml:"lrc-format"`
+	SaveAnimatedArtwork     bool      `yaml:"save-animated-artwork"`
+	EmbyAnimatedArtwork     bool      `yaml:"emby-animated-artwork"`
+	EmbedLrc                bool      `yaml:"embed-lrc"`
+	EmbedCover              bool      `yaml:"embed-cover"`
+	SaveArtistCover         bool      `yaml:"save-artist-cover"`
+	CoverSize               string    `yaml:"cover-size"`
+	CoverFormat             string    `yaml:"cover-format"`
+	AlacSaveFolder          string    `yaml:"alac-save-folder"`
+	AtmosSaveFolder         string    `yaml:"atmos-save-folder"`
+	AlbumFolderFormat       string    `yaml:"album-folder-format"`
+	PlaylistFolderFormat    string    `yaml:"playlist-folder-format"`
+	ArtistFolderFormat      string    `yaml:"artist-folder-format"`
+	SongFileFormat          string    `yaml:"song-file-format"`
+	ExplicitChoice          string    `yaml:"explicit-choice"`
+	CleanChoice             string    `yaml:"clean-choice"`
+	AppleMasterChoice       string    `yaml:"apple-master-choice"`
+	MaxMemoryLimit          int       `yaml:"max-memory-limit"`
+	GetM3u8Mode             string    `yaml:"get-m3u8-mode"`
+	GetM3u8FromDevice       bool      `yaml:"get-m3u8-from-device"`
+	AacType                 string    `yaml:"aac-type"`
+	AlacMax                 int       `yaml:"alac-max"`
+	AtmosMax                int       `yaml:"atmos-max"`
+	LimitMax                int       `yaml:"limit-max"`
+	UseSongInfoForPlaylist  bool      `yaml:"use-songinfo-for-playlist"`
+	DlAlbumcoverForPlaylist bool      `yaml:"dl-albumcover-for-playlist"`
+	MVAudioType             string    `yaml:"mv-audio-type"`
+	MVMax                   int       `yaml:"mv-max"`
+	AacDownloadThreads      int       `yaml:"aac_downloadthreads"`
+	LosslessDownloadThreads int       `yaml:"lossless_downloadthreads"`
+	HiresDownloadThreads    int       `yaml:"hires_downloadthreads"`
+	ChunkDownloadThreads    int       `yaml:"chunk_downloadthreads"`
+	BufferSizeKB            int       `yaml:"BufferSizeKB"`
+	NetworkReadBufferKB     int       `yaml:"NetworkReadBufferKB"`
+	MaxPathLength           int       `yaml:"max-path-length"`
+	DefaultLyricStorefront  string    `yaml:"default-lyric-storefront"`
 }
 
 type Counter struct {
@@ -64,9 +68,9 @@ type ApiResult struct {
 }
 
 type SongAttributes struct {
-	ArtistName        string   `json:"artistName"`
-	DiscNumber        int      `json:"discNumber"`
-	GenreNames        []string `json:"genreNames"`
+	ArtistName    string   `json:"artistName"`
+	DiscNumber    int      `json:"discNumber"`
+	GenreNames    []string `json:"genreNames"`
 	ExtendedAssetUrls struct {
 		EnhancedHls string `json:"enhancedHls"`
 	} `json:"extendedAssetUrls"`
@@ -306,26 +310,26 @@ type AutoGenerated struct {
 				TextColor3 string `json:"textColor3"`
 				TextColor4 string `json:"textColor4"`
 			} `json:"artwork"`
-			ArtistName           string   `json:"artistName"`
-			IsSingle             bool     `json:"isSingle"`
-			URL                  string   `json:"url"`
-			IsComplete           bool     `json:"isComplete"`
-			GenreNames           []string `json:"genreNames"`
-			TrackCount           int      `json:"trackCount"`
-			IsMasteredForItunes  bool     `json:"isMasteredForItunes"`
-			IsAppleDigitalMaster bool     `json:"isAppleDigitalMaster"`
-			ContentRating        string   `json:"contentRating"`
-			ReleaseDate          string   `json:"releaseDate"`
-			Name                 string   `json:"name"`
-			RecordLabel          string   `json:"recordLabel"`
-			Upc                  string   `json:"upc"`
-			AudioTraits          []string `json:"audioTraits"`
-			Copyright            string   `json:"copyright"`
+			ArtistName           string          `json:"artistName"`
+			IsSingle             bool            `json:"isSingle"`
+			URL                  string          `json:"url"`
+			IsComplete           bool            `json:"isComplete"`
+			GenreNames           []string        `json:"genreNames"`
+			TrackCount           int             `json:"trackCount"`
+			IsMasteredForItunes  bool            `json:"isMasteredForItunes"`
+			IsAppleDigitalMaster bool            `json:"isAppleDigitalMaster"`
+			ContentRating        string          `json:"contentRating"`
+			ReleaseDate          string          `json:"releaseDate"`
+			Name                 string          `json:"name"`
+			RecordLabel          string          `json:"recordLabel"`
+			Upc                  string          `json:"upc"`
+			AudioTraits          []string        `json:"audioTraits"`
+			Copyright            string          `json:"copyright"`
 			PlayParams           struct {
 				ID   string `json:"id"`
 				Kind string `json:"kind"`
 			} `json:"playParams"`
-			IsCompilation  bool `json:"isCompilation"`
+			IsCompilation  bool            `json:"isCompilation"`
 			EditorialVideo struct {
 				MotionTall struct {
 					Video string `json:"video"`
@@ -340,6 +344,9 @@ type AutoGenerated struct {
 					Video string `json:"video"`
 				} `json:"motionDetailSquare"`
 			} `json:"editorialVideo"`
+			// [新增功能] 在此添加 EditorialNotes 字段
+			// Added EditorialNotes field here.
+			EditorialNotes *EditorialNotes `json:"editorialNotes"`
 		} `json:"attributes"`
 		Relationships struct {
 			RecordLabels struct {
