@@ -53,6 +53,7 @@ type ConfigSet struct {
 	NetworkReadBufferKB     int       `yaml:"NetworkReadBufferKB"`
 	MaxPathLength           int       `yaml:"max-path-length"`
 	DefaultLyricStorefront  string    `yaml:"default-lyric-storefront"`
+	DownloadVideos          bool      `yaml:"download-videos"`
 }
 
 type Counter struct {
@@ -541,3 +542,4 @@ type SongLyrics struct {
 		} `json:"attributes"`
 	} `json:"data"`
 }
+
