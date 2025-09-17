@@ -11,6 +11,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	google.golang.org/protobuf v1.36.2
 	lukechampine.com/frand v1.5.1
+    github.com/abema/go-mp4 v1.4.1
 )
 
 require (
