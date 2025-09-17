@@ -12,7 +12,6 @@ import (
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/parser"
-
 	"github.com/spf13/pflag"
 )
 
@@ -203,3 +202,4 @@ func main() {
 		core.SharedLock.Unlock()
 	}
 }
+
