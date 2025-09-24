@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	//"github.com/gospider007/requests"
-	"github.com/sky8282/gospider007"
+	"github.com/sky8282/gospider007/requests"
 	"google.golang.org/protobuf/proto"
 
 	//"log/slog"
