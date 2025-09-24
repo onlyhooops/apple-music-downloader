@@ -12,6 +12,7 @@ require (
 	google.golang.org/protobuf v1.36.2
 	lukechampine.com/frand v1.5.1
     github.com/abema/go-mp4 v1.4.1
+    github.com/sky8282/gospider007 v0.0.0
 )
 
 require (
@@ -31,18 +32,6 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
-	github.com/sky8282/gospider007/bar v0.0.0
-	github.com/sky8282/gospider007/blog v0.0.0
-	github.com/sky8282/gospider007/bs4 v0.0.0
-	github.com/sky8282/gospider007/gson v0.0.0
-	github.com/sky8282/gospider007/gtls v0.0.0
-	github.com/sky8282/gospider007/http2 v0.0.0
-	github.com/sky8282/gospider007/http3 v0.0.0
-	github.com/sky8282/gospider007/ja3 v0.0.0
-	github.com/sky8282/gospider007/kinds v0.0.0
-	github.com/sky8282/gospider007/re v0.0.0
-	github.com/sky8282/gospider007/tools v0.0.0
-	github.com/sky8282/gospider007/websocket v0.0.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
