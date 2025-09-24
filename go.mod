@@ -31,18 +31,18 @@ require (
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
-	github.com/gospider007/bar v0.0.0-20241205091858-06f3c7e16dd9 // indirect
-	github.com/gospider007/blog v0.0.0-20241205091827-6bcaf48620d4 // indirect
-	github.com/gospider007/bs4 v0.0.0-20241216122612-aa3f29179e6f // indirect
-	github.com/gospider007/gson v0.0.0-20241216122450-fb66d0ba2a07 // indirect
-	github.com/gospider007/gtls v0.0.0-20250107100054-2a14fa6fc9c5 // indirect
-	github.com/gospider007/http2 v0.0.0-20250107095809-0f8c60040d4a // indirect
-	github.com/gospider007/http3 v0.0.0-20250107095941-a36b210aca37 // indirect
-	github.com/gospider007/ja3 v0.0.0-20250107091445-e294e50de314 // indirect
-	github.com/gospider007/kinds v0.0.0-20240929092451-8f867acde255 // indirect
-	github.com/gospider007/re v0.0.0-20241216142712-efbef8d55ea2 // indirect
-	github.com/gospider007/tools v0.0.0-20250107090942-5b406ab8a72b // indirect
-	github.com/gospider007/websocket v0.0.0-20250107091829-c78035a103b2 // indirect
+	github.com/sky8282/gospider007/bar v0.0.0
+	github.com/sky8282/gospider007/blog v0.0.0
+	github.com/sky8282/gospider007/bs4 v0.0.0
+	github.com/sky8282/gospider007/gson v0.0.0
+	github.com/sky8282/gospider007/gtls v0.0.0
+	github.com/sky8282/gospider007/http2 v0.0.0
+	github.com/sky8282/gospider007/http3 v0.0.0
+	github.com/sky8282/gospider007/ja3 v0.0.0
+	github.com/sky8282/gospider007/kinds v0.0.0
+	github.com/sky8282/gospider007/re v0.0.0
+	github.com/sky8282/gospider007/tools v0.0.0
+	github.com/sky8282/gospider007/websocket v0.0.0
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
