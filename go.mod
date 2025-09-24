@@ -5,17 +5,30 @@ go 1.23.1
 require (
 	github.com/Eyevinn/mp4ff v0.46.0
 	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1
-	github.com/gospider007/requests v0.0.0-20250114011338-9562a203fa04
+	github.com/sky8282/requests v0.0.0
 	github.com/grafov/m3u8 v0.11.1
 	github.com/schollz/progressbar/v3 v3.14.6
 	github.com/spf13/pflag v1.0.5
 	google.golang.org/protobuf v1.36.2
 	lukechampine.com/frand v1.5.1
     github.com/abema/go-mp4 v1.4.1
-    github.com/sky8282/gospider007 v0.0.0
+
 )
 
 require (
+    github.com/sky8282/bar v0.0.0
+	github.com/sky8282/blog v0.0.0
+	github.com/sky8282/bs4 v0.0.0
+	github.com/sky8282/gson v0.0.0
+	github.com/sky8282/gtls v0.0.0
+	github.com/sky8282/http2 v0.0.0
+	github.com/sky8282/http3 v0.0.0
+	github.com/sky8282/ja3 v0.0.0
+	github.com/sky8282/kinds v0.0.0
+	github.com/sky8282/re v0.0.0
+	github.com/sky8282/tools v0.0.0
+	github.com/sky8282/websocket v0.0.0
+	
 	github.com/PuerkitoBio/goquery v1.10.1 // indirect
 	github.com/STARRY-S/zip v0.2.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
