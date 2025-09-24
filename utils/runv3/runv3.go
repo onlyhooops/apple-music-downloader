@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/gospider007/requests"
+	//"github.com/gospider007/requests"
+	"https://github.com/sky8282/gospider007"
 	"google.golang.org/protobuf/proto"
 
 	//"log/slog"
