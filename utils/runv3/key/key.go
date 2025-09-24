@@ -4,8 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
-	//"github.com/gospider007/requests"
-	"github.com/sky8282/gospider007/requests"
+	"github.com/sky8282/requests"
 	"log/slog"
 	"main/utils/runv3/cdm"
 )
