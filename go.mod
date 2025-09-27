@@ -105,4 +105,7 @@ require (
 	gopkg.in/yaml.v2 v2.2.8
 )
 
-require github.com/google/uuid v1.3.1 // indirect
+require (
+	github.com/google/uuid v1.3.1 // indirect
+	github.com/zhaarey/go-mp4tag v0.0.0-20250210094042-22578afc09bf // indirect
+)
