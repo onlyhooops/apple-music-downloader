@@ -3,32 +3,19 @@ module main
 go 1.23.1
 
 require (
-	github.com/Eyevinn/mp4ff v0.46.0
+	github.com/Eyevinn/mp4ff v0.50.0
+	github.com/abema/go-mp4 v1.4.1
 	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1
-	github.com/sky8282/requests v0.0.0
 	github.com/grafov/m3u8 v0.11.1
 	github.com/schollz/progressbar/v3 v3.14.6
+	github.com/sky8282/requests v0.0.0
 	github.com/spf13/pflag v1.0.5
 	google.golang.org/protobuf v1.36.2
 	lukechampine.com/frand v1.5.1
-    github.com/abema/go-mp4 v1.4.1
 
 )
 
 require (
-    github.com/sky8282/bar v0.0.0
-	github.com/sky8282/blog v0.0.0
-	github.com/sky8282/bs4 v0.0.0
-	github.com/sky8282/gson v0.0.0
-	github.com/sky8282/gtls v0.0.0
-	github.com/sky8282/http2 v0.0.0
-	github.com/sky8282/http3 v0.0.0
-	github.com/sky8282/ja3 v0.0.0
-	github.com/sky8282/kinds v0.0.0
-	github.com/sky8282/re v0.0.0
-	github.com/sky8282/tools v0.0.0
-	github.com/sky8282/websocket v0.0.0
-	
 	github.com/PuerkitoBio/goquery v1.10.1 // indirect
 	github.com/STARRY-S/zip v0.2.1 // indirect
 	github.com/andybalholm/brotli v1.1.1 // indirect
@@ -49,7 +36,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
@@ -58,7 +44,6 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mholt/acmez/v3 v3.0.0 // indirect
 	github.com/mholt/archives v0.1.0 // indirect
 	github.com/miekg/dns v1.1.62 // indirect
@@ -73,6 +58,18 @@ require (
 	github.com/refraction-networking/uquic v0.0.6 // indirect
 	github.com/refraction-networking/utls v1.6.7 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/sky8282/bar v0.0.0 // indirect
+	github.com/sky8282/blog v0.0.0 // indirect
+	github.com/sky8282/bs4 v0.0.0 // indirect
+	github.com/sky8282/gson v0.0.0 // indirect
+	github.com/sky8282/gtls v0.0.0 // indirect
+	github.com/sky8282/http2 v0.0.0 // indirect
+	github.com/sky8282/http3 v0.0.0 // indirect
+	github.com/sky8282/ja3 v0.0.0 // indirect
+	github.com/sky8282/kinds v0.0.0 // indirect
+	github.com/sky8282/re v0.0.0 // indirect
+	github.com/sky8282/tools v0.0.0 // indirect
+	github.com/sky8282/websocket v0.0.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.5 // indirect
 	github.com/therootcompany/xz v1.0.1 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
@@ -100,10 +97,12 @@ require (
 )
 
 require (
-	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/beevik/etree v1.3.0
 	github.com/fatih/color v1.18.0
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/zhaarey/go-mp4tag v0.0.0-20250210094042-22578afc09bf
+	github.com/sky8282/go-mp4tag v0.0.1
+	github.com/itouakirai/mp4ff v0.0.0-20250925134252-75574f4c6b73
 	gopkg.in/yaml.v2 v2.2.8
 )
+
+require github.com/google/uuid v1.3.1 // indirect
