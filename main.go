@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"main/internal/api"
 	"main/internal/core"
@@ -77,12 +79,137 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Unlock()
 }
 
+func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int) {
+	if wg != nil {
+		defer wg.Done()
+	}
+	if semaphore != nil {
+		defer func() { <-semaphore }()
+	}
+
+	if totalTasks > 1 {
+		fmt.Printf("[%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
+	}
+
+	var storefront, albumId string
+
+	if strings.Contains(urlRaw, "/music-video/") {
+		handleSingleMV(urlRaw)
+		return
+	}
+
+	if strings.Contains(urlRaw, "/song/") {
+		tempStorefront, _ := parser.CheckUrlSong(urlRaw)
+		accountForSong, err := core.GetAccountForStorefront(tempStorefront)
+		if err != nil {
+			fmt.Printf("获取歌曲信息失败 for %s: %v\n", urlRaw, err)
+			return
+		}
+		urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
+		if err != nil {
+			fmt.Printf("获取歌曲链接失败 for %s: %v\n", urlRaw, err)
+			return
+		}
+		core.Dl_song = true
+	}
+
+	if strings.Contains(urlRaw, "/playlist/") {
+		storefront, albumId = parser.CheckUrlPlaylist(urlRaw)
+	} else {
+		storefront, albumId = parser.CheckUrl(urlRaw)
+	}
+
+	if albumId == "" {
+		fmt.Printf("无效的URL: %s\n", urlRaw)
+		return
+	}
+
+	parse, err := url.Parse(urlRaw)
+	if err != nil {
+		log.Printf("解析URL失败 %s: %v", urlRaw, err)
+		return
+	}
+	var urlArg_i = parse.Query().Get("i")
+	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
+	if err != nil {
+		fmt.Printf("专辑下载失败: %s -> %v\n", urlRaw, err)
+	} else {
+		if totalTasks > 1 {
+			fmt.Printf("[%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
+		}
+	}
+}
+
+func runDownloads(initialUrls []string, isBatch bool) {
+	var finalUrls []string
+
+	for _, urlRaw := range initialUrls {
+		if strings.Contains(urlRaw, "/artist/") {
+			fmt.Printf("正在解析歌手页面: %s\n", urlRaw)
+			artistAccount := &core.Config.Accounts[0]
+			urlArtistName, urlArtistID, err := api.GetUrlArtistName(urlRaw, artistAccount)
+			if err != nil {
+				fmt.Printf("获取歌手名称失败 for %s: %v\n", urlRaw, err)
+				continue
+			}
+			
+			core.Config.ArtistFolderFormat = strings.NewReplacer(
+				"{UrlArtistName}", core.LimitString(urlArtistName),
+				"{ArtistId}", urlArtistID,
+			).Replace(core.Config.ArtistFolderFormat)
+
+			albumArgs, err := api.CheckArtist(urlRaw, artistAccount, "albums")
+			if err != nil {
+				fmt.Printf("获取歌手专辑失败 for %s: %v\n", urlRaw, err)
+			} else {
+				finalUrls = append(finalUrls, albumArgs...)
+				fmt.Printf("从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
+			}
+
+			mvArgs, err := api.CheckArtist(urlRaw, artistAccount, "music-videos")
+			if err != nil {
+				fmt.Printf("获取歌手MV失败 for %s: %v\n", urlRaw, err)
+			} else {
+				finalUrls = append(finalUrls, mvArgs...)
+				fmt.Printf("从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
+			}
+		} else {
+			finalUrls = append(finalUrls, urlRaw)
+		}
+	}
+
+	if len(finalUrls) == 0 {
+		fmt.Println("队列中没有有效的链接可供下载。")
+		return
+	}
+
+	numThreads := 1
+	if isBatch && core.Config.TxtDownloadThreads > 1 {
+		numThreads = core.Config.TxtDownloadThreads
+	}
+	
+	var wg sync.WaitGroup
+	semaphore := make(chan struct{}, numThreads)
+	totalTasks := len(finalUrls)
+
+	fmt.Printf("--- 开始下载任务 ---\n总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
+
+	for i, urlToProcess := range finalUrls {
+		wg.Add(1)
+		semaphore <- struct{}{}
+		go processURL(urlToProcess, &wg, semaphore, i+1, totalTasks)
+	}
+
+	wg.Wait()
+}
+
 func main() {
 	core.InitFlags()
 
 	pflag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] url1 url2 ...\n", "[main | main.exe | go run main.go]")
-		fmt.Println("Options:")
+		fmt.Fprintf(os.Stderr, "用法: %s [选项] [url1 url2 ...]\n", os.Args[0])
+		fmt.Println("如果没有提供URL，程序将进入交互模式。")
+		fmt.Println("选项:")
 		pflag.PrintDefaults()
 	}
 
@@ -91,7 +218,7 @@ func main() {
 	err := core.LoadConfig(core.ConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) && core.ConfigPath == "config.yaml" {
-			fmt.Println("错误: 默认配置文件 config.yaml 未找到，请在程序同目录下创建它，或通过 --config 参数指定一个有效的配置文件。")
+			fmt.Println("错误: 默认配置文件 config.yaml 未找到。")
 			pflag.Usage()
 			return
 		}
@@ -109,7 +236,7 @@ func main() {
 		if len(core.Config.Accounts) > 0 && core.Config.Accounts[0].AuthorizationToken != "" && core.Config.Accounts[0].AuthorizationToken != "your-authorization-token" {
 			token = strings.Replace(core.Config.Accounts[0].AuthorizationToken, "Bearer ", "", -1)
 		} else {
-			fmt.Println("Failed to get developer token.")
+			fmt.Println("获取开发者 token 失败。")
 			return
 		}
 	}
@@ -117,89 +244,45 @@ func main() {
 
 	args := pflag.Args()
 	if len(args) == 0 {
-		fmt.Println("No URLs provided. Please provide at least one URL.")
-		pflag.Usage()
-		return
-	}
-	os.Args = args
+		fmt.Print("请输入专辑链接或TXT文件路径: ")
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadString('\n')
+		input = strings.TrimSpace(input)
 
-	if strings.Contains(os.Args[0], "/artist/") {
-		artistAccount := &core.Config.Accounts[0]
-		urlArtistName, urlArtistID, err := api.GetUrlArtistName(os.Args[0], artistAccount)
-		if err != nil {
-			fmt.Println("Failed to get artistname.")
+		if input == "" {
+			fmt.Println("未输入内容，程序退出。")
 			return
 		}
-		core.Config.ArtistFolderFormat = strings.NewReplacer(
-			"{UrlArtistName}", core.LimitString(urlArtistName),
-			"{ArtistId}", urlArtistID,
-		).Replace(core.Config.ArtistFolderFormat)
-		albumArgs, err := api.CheckArtist(os.Args[0], artistAccount, "albums")
-		if err != nil {
-			fmt.Println("Failed to get artist albums.")
-			return
-		}
-		mvArgs, err := api.CheckArtist(os.Args[0], artistAccount, "music-videos")
-		if err != nil {
-			fmt.Println("Failed to get artist music-videos.")
-		}
-		os.Args = append(albumArgs, mvArgs...)
-	}
 
-	albumTotal := len(os.Args)
-	for {
-		for albumNum, urlRaw := range os.Args {
-			fmt.Printf("正在处理专辑 %d of %d: %s\n", albumNum+1, albumTotal, urlRaw)
-			var storefront, albumId string
-
-			if strings.Contains(urlRaw, "/music-video/") {
-				handleSingleMV(urlRaw)
-				continue
-			}
-
-			if strings.Contains(urlRaw, "/song/") {
-				tempStorefront, _ := parser.CheckUrlSong(urlRaw)
-				accountForSong, err := core.GetAccountForStorefront(tempStorefront)
+		if strings.HasSuffix(strings.ToLower(input), ".txt") {
+			if _, err := os.Stat(input); err == nil {
+				fileBytes, err := os.ReadFile(input)
 				if err != nil {
-					fmt.Printf("获取歌曲信息失败: %v\n", err)
-					continue
+					fmt.Printf("读取文件 %s 失败: %v\n", input, err)
+					return
 				}
-				urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
-				if err != nil {
-					fmt.Println("Failed to get Song info.")
-					continue
+				lines := strings.Split(string(fileBytes), "\n")
+				var urls []string
+				for _, line := range lines {
+					trimmedLine := strings.TrimSpace(line)
+					if trimmedLine != "" {
+						urls = append(urls, trimmedLine)
+					}
 				}
-				core.Dl_song = true
-			}
-
-			if strings.Contains(urlRaw, "/playlist/") {
-				storefront, albumId = parser.CheckUrlPlaylist(urlRaw)
+				runDownloads(urls, true)
 			} else {
-				storefront, albumId = parser.CheckUrl(urlRaw)
+				fmt.Printf("错误: 文件不存在 %s\n", input)
+				return
 			}
-			if albumId == "" {
-				fmt.Printf("Invalid URL: %s\n", urlRaw)
-				continue
-			}
-			parse, err := url.Parse(urlRaw)
-			if err != nil {
-				log.Fatalf("Invalid URL: %v", err)
-			}
-			var urlArg_i = parse.Query().Get("i")
-			err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
-			if err != nil {
-				fmt.Println("Album failed:", err)
-			}
+		} else {
+			runDownloads([]string{input}, false)
 		}
-		fmt.Printf("=======  [✔ ] Completed: %d/%d  |  [⚠ ] Warnings: %d  |  [✖ ] Errors: %d  =======\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
-		if core.Counter.Error == 0 {
-			break
-		}
-		fmt.Println("错误已发生，正在自动重试...")
-		fmt.Println("开始重试...")
-		core.SharedLock.Lock()
-		core.Counter = core.InitCounter()
-		core.SharedLock.Unlock()
+	} else {
+		runDownloads(args, false)
+	}
+
+	fmt.Printf("\n=======  [✔ ] Completed: %d/%d  |  [⚠ ] Warnings: %d  |  [✖ ] Errors: %d  =======\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	if core.Counter.Error > 0 {
+		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}
 }
-
