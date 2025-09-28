@@ -57,6 +57,7 @@ type ConfigSet struct {
 	FfmpegFix               bool      `yaml:"ffmpeg-fix"`
     FfmpegCheckArgs         string    `yaml:"ffmpeg-check-args"`
     FfmpegEncodeArgs        string    `yaml:"ffmpeg-encode-args"`
+	TxtDownloadThreads      int       `yaml:"txtDownloadThreads"`
 }
 
 type Counter struct {
@@ -545,5 +546,6 @@ type SongLyrics struct {
 		} `json:"attributes"`
 	} `json:"data"`
 }
+
 
 
