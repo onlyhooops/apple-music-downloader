@@ -49,6 +49,9 @@ type TrackStatus struct {
 }
 
 var UiMutex sync.Mutex
+
+var RipLock sync.Mutex
+
 var TrackStatuses []TrackStatus
 
 func InitCounter() structs.Counter {
@@ -72,7 +75,6 @@ func InitFlags() {
 	Mv_max = pflag.Int("mv-max", 1080, "Specify the max quality for download MV")
 }
 
-// LoadConfig loads configuration from the specified path
 func LoadConfig(configPath string) error {
 	if configPath == "" {
 		ConfigPath = "config.yaml"
@@ -94,6 +96,11 @@ func LoadConfig(configPath string) error {
 
 	if len(Config.Accounts) == 0 {
 		return errors.New(red("配置错误: 'accounts' 列表为空，请在 config.yaml 中至少配置一个账户"))
+	}
+
+	if Config.TxtDownloadThreads <= 0 {
+		Config.TxtDownloadThreads = 5
+		fmt.Println(green("配置文件中未设置 'txtDownloadThreads'，自动设为默认值 5"))
 	}
 
 	if Config.BufferSizeKB <= 0 {
@@ -133,7 +140,7 @@ func LoadConfig(configPath string) error {
 			)
 		}
 	}
-	// Bind pflag values to config after loading defaults
+
 	if *Alac_max == 0 {
 		Alac_max = &Config.AlacMax
 	}
@@ -152,7 +159,6 @@ func LoadConfig(configPath string) error {
 	return nil
 }
 
-// GetAccountForStorefront finds an account for the given storefront
 func GetAccountForStorefront(storefront string) (*structs.Account, error) {
 	if len(Config.Accounts) == 0 {
 		return nil, errors.New("无可用账户")
@@ -176,11 +182,9 @@ func GetAccountForStorefront(storefront string) (*structs.Account, error) {
 	return &Config.Accounts[0], nil
 }
 
-// LimitString truncates a string to the configured max limit
 func LimitString(s string) string {
 	if len([]rune(s)) > Config.LimitMax {
 		return string([]rune(s)[:Config.LimitMax])
 	}
 	return s
 }
-
