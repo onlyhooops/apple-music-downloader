@@ -8,7 +8,6 @@ import (
 	"io"
 	"main/internal/core"
 	"main/internal/parser"
-	"main/internal/ui"
 	"main/utils/structs"
 	"net/http"
 	"net/url"
@@ -303,7 +302,6 @@ func GetInfoFromAdam(adamId string, account *structs.Account, storefront string)
 	obj := new(structs.ApiResult)
 	err = json.NewDecoder(do.Body).Decode(&obj)
 	if err != nil {
-		ui.LogError("Failed to decode API response: %v", err)
 		return nil, err
 	}
 

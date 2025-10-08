@@ -2,10 +2,12 @@ package downloader
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"main/internal/api"
 	"main/internal/core"
+	"main/internal/logger"
 	"main/internal/metadata"
 	"main/internal/parser"
 	"main/internal/ui"
@@ -27,13 +29,23 @@ import (
 
 func checkAndReEncodeTrack(trackPath string, statusIndex int) (bool, error) {
 	ui.UpdateStatus(statusIndex, "正在检测...", color.New(color.FgCyan).SprintFunc())
+
+	// 检测超时设置为60秒
+	checkCtx, checkCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer checkCancel()
+
 	checkArgs := strings.Fields(core.Config.FfmpegCheckArgs)
 	cmdCheckArgs := append([]string{"-i", trackPath}, checkArgs...)
-	checkCmd := exec.Command("ffmpeg", cmdCheckArgs...)
+	checkCmd := exec.CommandContext(checkCtx, "ffmpeg", cmdCheckArgs...)
 
 	var stderr bytes.Buffer
 	checkCmd.Stderr = &stderr
 	err := checkCmd.Run()
+
+	// 检查是否超时
+	if checkCtx.Err() == context.DeadlineExceeded {
+		return false, fmt.Errorf("文件检测超时（60秒），可能文件过大或ffmpeg卡住")
+	}
 
 	if err == nil && stderr.Len() == 0 {
 		return false, nil
@@ -44,14 +56,23 @@ func checkAndReEncodeTrack(trackPath string, statusIndex int) (bool, error) {
 	tempTrackPath := trackPath + ".fixed.m4a"
 	defer os.Remove(tempTrackPath)
 
+	// 重编码超时设置为5分钟
+	encodeCtx, encodeCancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer encodeCancel()
+
 	encodeArgs := strings.Fields(core.Config.FfmpegEncodeArgs)
 	cmdEncodeArgs := append([]string{"-i", trackPath}, encodeArgs...)
 	cmdEncodeArgs = append(cmdEncodeArgs, tempTrackPath)
 
-	encodeCmd := exec.Command("ffmpeg", cmdEncodeArgs...)
+	encodeCmd := exec.CommandContext(encodeCtx, "ffmpeg", cmdEncodeArgs...)
 	var encodeStderr bytes.Buffer
 	encodeCmd.Stderr = &encodeStderr
 	err = encodeCmd.Run()
+
+	// 检查是否超时
+	if encodeCtx.Err() == context.DeadlineExceeded {
+		return true, fmt.Errorf("重新编码超时（5分钟）")
+	}
 
 	if err != nil {
 		return true, fmt.Errorf("重新编码失败: %v, FFMPEG输出: %s", err, encodeStderr.String())
@@ -508,8 +529,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	finalAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
 	os.MkdirAll(finalAlbumFolder, os.ModePerm)
 
-	ui.LogInfo("歌手: %s", meta.Data[0].Attributes.ArtistName)
-	ui.LogInfo("专辑: %s", meta.Data[0].Attributes.Name)
+	logger.AlbumHeader(meta.Data[0].Attributes.ArtistName, meta.Data[0].Attributes.Name)
 
 	if core.Config.SaveArtistCover && !(strings.Contains(albumId, "pl.")) {
 		if len(meta.Data[0].Relationships.Artists.Data) > 0 {
@@ -548,7 +568,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	selected := ui.SelectTracks(meta, storefront, urlArg_i)
 
-	ui.LogInfo("正在进行版权预检，请稍候...")
+	logger.Info("🔬 正在进行版权预检，请稍候...")
 	var workingAccounts []structs.Account
 	if len(meta.Data[0].Relationships.Tracks.Data) > 0 {
 		firstTrackId := meta.Data[0].Relationships.Tracks.Data[0].ID
@@ -557,7 +577,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			if err == nil {
 				workingAccounts = append(workingAccounts, acc)
 			} else {
-				ui.LogWarn("账户 [%s] 无法访问此专辑 (可能无版权)，本次任务将跳过该账户", acc.Name)
+				logger.Warn("账户 [%s] 无法访问此专辑 (可能无版权)，本次任务将跳过该账户。", acc.Name)
 			}
 		}
 	} else {
@@ -619,9 +639,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	sort.Strings(regionNames)
 	regionsStr := strings.Join(regionNames, " / ")
 
-	ui.LogInfo("音源: %s | %d 线程 | %s | %d 个账户并行下载",
-		albumQualityString, numThreads, regionsStr, len(workingAccounts))
-	ui.LogInfo(strings.Repeat("-", 50))
+	logger.QualityInfo(albumQualityString, numThreads, regionsStr, len(workingAccounts))
+	logger.Plain("\n")
 
 	core.RipLock.Lock()
 	defer core.RipLock.Unlock()
@@ -652,7 +671,12 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	}
 
 	doneUI := make(chan struct{})
-	go ui.RenderUI(doneUI)
+	var uiWg sync.WaitGroup
+	uiWg.Add(1)
+	go func() {
+		defer uiWg.Done()
+		ui.RenderUI(doneUI)
+	}()
 
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, numThreads)
@@ -695,14 +719,11 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				progressChan := make(chan runv14.ProgressUpdate, 10)
 				go func() {
 					for p := range progressChan {
-						speedStr := utils.FormatSpeed(p.SpeedBPS)
-						account := &workingAccounts[statusIndex%len(workingAccounts)]
-						accountInfo := fmt.Sprintf("%s 账号", strings.ToUpper(account.Storefront))
 						var status string
 						if p.Stage == "decrypt" {
-							status = fmt.Sprintf("%s %s %d%% (%s)", yellow(accountInfo), red("解密中"), p.Percentage, speedStr)
+							status = fmt.Sprintf("解密中 %d%%", p.Percentage)
 						} else {
-							status = fmt.Sprintf("%s 下载中 %d%% (%s)", yellow(accountInfo), p.Percentage, speedStr)
+							status = fmt.Sprintf("下载中 %d%%", p.Percentage)
 						}
 						ui.UpdateStatus(statusIndex, status, color.New(color.FgYellow).SprintFunc())
 					}
@@ -793,10 +814,25 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	wg.Wait()
 	close(doneUI)
-	time.Sleep(200 * time.Millisecond)
-	ui.PrintUI()
+	uiWg.Wait() // 等待UI渲染goroutine完全退出
 
-	ui.LogInfo(strings.Repeat("-", 50))
+	// 打印最终状态
+	core.UiMutex.Lock()
+	if len(core.TrackStatuses) > 0 {
+		ui.PrintUI()
+	}
+	core.UiMutex.Unlock()
+
+	// 刷新UI期间缓存的日志
+	logger.FlushBuffer()
+
+	// 清空UI状态，准备下一个专辑
+	core.UiMutex.Lock()
+	core.TrackStatuses = nil
+	core.UiMutex.Unlock()
+
+	logger.SectionEnd()
+	logger.Plain("\n") // 专辑之间添加空行分隔
 	return nil
 }
 

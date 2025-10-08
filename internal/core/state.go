@@ -62,17 +62,17 @@ func InitFlags() {
 	pflag.StringVar(&ConfigPath, "config", "", "指定要使用的配置文件路径 (例如: configs/cn.yaml)")
 	pflag.StringVar(&OutputPath, "output", "", "指定本次任务的唯一输出目录")
 
-	pflag.BoolVar(&Dl_atmos, "atmos", false, "Enable atmos download mode")
-	pflag.BoolVar(&Dl_aac, "aac", false, "Enable adm-aac download mode")
-	pflag.BoolVar(&Dl_select, "select", false, "Enable selective download")
-	pflag.BoolVar(&Dl_song, "song", false, "Enable single song download mode")
-	pflag.BoolVar(&Artist_select, "all-album", false, "Download all artist albums")
-	pflag.BoolVar(&Debug_mode, "debug", false, "Enable debug mode to show audio quality information")
-	Alac_max = pflag.Int("alac-max", 0, "Specify the max quality for download alac")
-	Atmos_max = pflag.Int("atmos-max", 0, "Specify the max quality for download atmos")
-	Aac_type = pflag.String("aac-type", "aac", "Select AAC type, aac aac-binaural aac-downmix")
-	Mv_audio_type = pflag.String("mv-audio-type", "atmos", "Select MV audio type, atmos ac3 aac")
-	Mv_max = pflag.Int("mv-max", 1080, "Specify the max quality for download MV")
+	pflag.BoolVar(&Dl_atmos, "atmos", false, "启用 Atmos 下载模式")
+	pflag.BoolVar(&Dl_aac, "aac", false, "启用 ADM-AAC 下载模式")
+	pflag.BoolVar(&Dl_select, "select", false, "启用选择性下载")
+	pflag.BoolVar(&Dl_song, "song", false, "启用单曲下载模式")
+	pflag.BoolVar(&Artist_select, "all-album", false, "下载艺术家的所有专辑")
+	pflag.BoolVar(&Debug_mode, "debug", false, "启用调试模式以显示音频质量信息")
+	Alac_max = pflag.Int("alac-max", 0, "指定 ALAC 下载的最大质量")
+	Atmos_max = pflag.Int("atmos-max", 0, "指定 Atmos 下载的最大质量")
+	Aac_type = pflag.String("aac-type", "aac", "选择 AAC 类型：aac、aac-binaural、aac-downmix")
+	Mv_audio_type = pflag.String("mv-audio-type", "atmos", "选择 MV 音频类型：atmos、ac3、aac")
+	Mv_max = pflag.Int("mv-max", 1080, "指定 MV 下载的最大质量")
 }
 
 func LoadConfig(configPath string) error {

@@ -12,8 +12,8 @@ import (
 	"main/internal/api"
 	"main/internal/core"
 	"main/internal/downloader"
+	"main/internal/logger"
 	"main/internal/parser"
-	"main/internal/ui"
 
 	"github.com/spf13/pflag"
 )
@@ -22,13 +22,17 @@ func handleSingleMV(urlRaw string) {
 	if core.Debug_mode {
 		return
 	}
+	
+	logger.Section("开始下载MV")
+	
 	storefront, albumId := parser.CheckUrlMv(urlRaw)
 	accountForMV, err := core.GetAccountForStorefront(storefront)
 	if err != nil {
-		ui.LogError("MV 下载失败: %v", err)
+		logger.Error("MV 下载失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
+		logger.SectionEnd()
 		return
 	}
 
@@ -36,26 +40,39 @@ func handleSingleMV(urlRaw string) {
 	core.Counter.Total++
 	core.SharedLock.Unlock()
 	if len(accountForMV.MediaUserToken) <= 50 {
+		logger.Error("账户 MediaUserToken 无效")
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
+		logger.SectionEnd()
 		return
 	}
 	if _, err := exec.LookPath("mp4decrypt"); err != nil {
+		logger.Error("未找到 mp4decrypt 工具")
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
+		logger.SectionEnd()
 		return
 	}
 
 	mvInfo, err := api.GetMVInfoFromAdam(albumId, accountForMV, storefront)
 	if err != nil {
-		ui.LogError("获取 MV 信息失败: %v", err)
+		logger.Error("获取 MV 信息失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
+		logger.SectionEnd()
 		return
 	}
+	
+	// 显示MV信息
+	logger.Plain("🎤 歌手: %s\n", mvInfo.Data[0].Attributes.ArtistName)
+	logger.Plain("🎬 MV: %s\n", mvInfo.Data[0].Attributes.Name)
+	if len(mvInfo.Data[0].Attributes.ReleaseDate) >= 4 {
+		logger.Plain("📅 发行: %s\n", mvInfo.Data[0].Attributes.ReleaseDate[:4])
+	}
+	logger.Plain("\n")
 
 	var artistFolder string
 	if core.Config.ArtistFolderFormat != "" {
@@ -76,14 +93,20 @@ func handleSingleMV(urlRaw string) {
 	_, err = downloader.MvDownloader(albumId, mvBasePath, sanitizedArtistFolder, "", storefront, nil, accountForMV)
 
 	if err != nil {
+		logger.Error("MV 下载失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
+		logger.SectionEnd()
 		return
 	}
+	
+	logger.Success("MV 下载完成")
 	core.SharedLock.Lock()
 	core.Counter.Success++
 	core.SharedLock.Unlock()
+	logger.SectionEnd()
+	logger.Plain("\n")
 }
 
 func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int) {
@@ -94,11 +117,9 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		defer func() { <-semaphore }()
 	}
 
-	if totalTasks > 1 {
-		ui.LogInfo("[%d/%d] 开始处理: %s", currentTask, totalTasks, urlRaw)
-	}
-
 	var storefront, albumId string
+
+	logger.TaskProgress(currentTask, totalTasks, fmt.Sprintf("开始处理: %s", urlRaw))
 
 	if strings.Contains(urlRaw, "/music-video/") {
 		handleSingleMV(urlRaw)
@@ -109,12 +130,12 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		tempStorefront, _ := parser.CheckUrlSong(urlRaw)
 		accountForSong, err := core.GetAccountForStorefront(tempStorefront)
 		if err != nil {
-			ui.LogError("获取歌曲信息失败 for %s: %v", urlRaw, err)
+			logger.Error("获取歌曲信息失败 for %s: %v", urlRaw, err)
 			return
 		}
 		urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
 		if err != nil {
-			ui.LogError("获取歌曲链接失败 for %s: %v", urlRaw, err)
+			logger.Error("获取歌曲链接失败 for %s: %v", urlRaw, err)
 			return
 		}
 		core.Dl_song = true
@@ -127,23 +148,21 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if albumId == "" {
-		ui.LogError("无效的URL: %s", urlRaw)
+		logger.Error("无效的URL: %s", urlRaw)
 		return
 	}
 
 	parse, err := url.Parse(urlRaw)
 	if err != nil {
-		ui.LogError("解析URL失败 %s: %v", urlRaw, err)
+		logger.Error("解析URL失败 %s: %v", urlRaw, err)
 		return
 	}
 	var urlArg_i = parse.Query().Get("i")
 	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
 	if err != nil {
-		ui.LogError("专辑下载失败: %s -> %v", urlRaw, err)
+		logger.Error("专辑下载失败: %s -> %v", urlRaw, err)
 	} else {
-		if totalTasks > 1 {
-			ui.LogSuccess("[%d/%d] 任务完成: %s", currentTask, totalTasks, urlRaw)
-		}
+		logger.TaskProgress(currentTask, totalTasks, fmt.Sprintf("任务完成: %s", urlRaw))
 	}
 }
 
@@ -152,11 +171,11 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 	for _, urlRaw := range initialUrls {
 		if strings.Contains(urlRaw, "/artist/") {
-			ui.LogInfo("正在解析歌手页面: %s", urlRaw)
+			logger.Info("正在解析歌手页面: %s", urlRaw)
 			artistAccount := &core.Config.Accounts[0]
 			urlArtistName, urlArtistID, err := api.GetUrlArtistName(urlRaw, artistAccount)
 			if err != nil {
-				ui.LogError("获取歌手名称失败 for %s: %v", urlRaw, err)
+				logger.Error("获取歌手名称失败 for %s: %v", urlRaw, err)
 				continue
 			}
 
@@ -167,18 +186,18 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 			albumArgs, err := api.CheckArtist(urlRaw, artistAccount, "albums")
 			if err != nil {
-				ui.LogError("获取歌手专辑失败 for %s: %v", urlRaw, err)
+				logger.Error("获取歌手专辑失败 for %s: %v", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, albumArgs...)
-				ui.LogSuccess("从歌手 %s 页面添加了 %d 张专辑到队列", urlArtistName, len(albumArgs))
+				logger.Info("从歌手 %s 页面添加了 %d 张专辑到队列。", urlArtistName, len(albumArgs))
 			}
 
 			mvArgs, err := api.CheckArtist(urlRaw, artistAccount, "music-videos")
 			if err != nil {
-				ui.LogError("获取歌手MV失败 for %s: %v", urlRaw, err)
+				logger.Error("获取歌手MV失败 for %s: %v", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, mvArgs...)
-				ui.LogSuccess("从歌手 %s 页面添加了 %d 个MV到队列", urlArtistName, len(mvArgs))
+				logger.Info("从歌手 %s 页面添加了 %d 个MV到队列。", urlArtistName, len(mvArgs))
 			}
 		} else {
 			finalUrls = append(finalUrls, urlRaw)
@@ -186,7 +205,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	}
 
 	if len(finalUrls) == 0 {
-		ui.LogWarn("队列中没有有效的链接可供下载")
+		logger.Warn("队列中没有有效的链接可供下载。")
 		return
 	}
 
@@ -199,12 +218,8 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)
 
-	ui.LogInfo("=== 开始下载任务 ===")
-	ui.LogInfo("总数: %d, 并发数: %d", totalTasks, numThreads)
-	ui.LogInfo("====================")
-
-	// 启动统一日志系统
-	ui.StartLogger()
+	logger.Section("开始下载任务")
+	logger.TotalCount(totalTasks, numThreads)
 
 	for i, urlToProcess := range finalUrls {
 		wg.Add(1)
@@ -213,9 +228,6 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	}
 
 	wg.Wait()
-
-	// 停止日志系统
-	ui.StopLogger()
 }
 
 func main() {
@@ -233,11 +245,11 @@ func main() {
 	err := core.LoadConfig(core.ConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) && core.ConfigPath == "config.yaml" {
-			fmt.Println("错误: 默认配置文件 config.yaml 未找到。")
+			logger.Error("默认配置文件 config.yaml 未找到。")
 			pflag.Usage()
 			return
 		}
-		fmt.Printf("加载配置文件 %s 失败: %v\n", core.ConfigPath, err)
+		logger.Error("加载配置文件 %s 失败: %v", core.ConfigPath, err)
 		return
 	}
 
@@ -251,7 +263,7 @@ func main() {
 		if len(core.Config.Accounts) > 0 && core.Config.Accounts[0].AuthorizationToken != "" && core.Config.Accounts[0].AuthorizationToken != "your-authorization-token" {
 			token = strings.Replace(core.Config.Accounts[0].AuthorizationToken, "Bearer ", "", -1)
 		} else {
-			fmt.Println("获取开发者 token 失败。")
+			logger.Error("获取开发者 token 失败。")
 			return
 		}
 	}
@@ -265,7 +277,7 @@ func main() {
 		input = strings.TrimSpace(input)
 
 		if input == "" {
-			fmt.Println("未输入内容，程序退出。")
+			logger.Warn("未输入内容，程序退出。")
 			return
 		}
 
@@ -273,7 +285,7 @@ func main() {
 			if _, err := os.Stat(input); err == nil {
 				fileBytes, err := os.ReadFile(input)
 				if err != nil {
-					fmt.Printf("读取文件 %s 失败: %v\n", input, err)
+					logger.Error("读取文件 %s 失败: %v", input, err)
 					return
 				}
 				lines := strings.Split(string(fileBytes), "\n")
@@ -286,7 +298,7 @@ func main() {
 				}
 				runDownloads(urls, true)
 			} else {
-				fmt.Printf("错误: 文件不存在 %s\n", input)
+				logger.Error("文件不存在 %s", input)
 				return
 			}
 		} else {
@@ -296,9 +308,11 @@ func main() {
 		runDownloads(args, false)
 	}
 
-	// 最终统计输出（直接打印，不通过logger）
-	fmt.Printf("\n=======  [✔ ] Completed: %d/%d  |  [⚠ ] Warnings: %d  |  [✖ ] Errors: %d  =======\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	logger.Plain("\n")
+	logger.Success(fmt.Sprintf("已完成: %d/%d  |  警告: %d  |  错误: %d",
+		core.Counter.Success, core.Counter.Total,
+		core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error))
 	if core.Counter.Error > 0 {
-		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
+		logger.Warn("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}
 }
