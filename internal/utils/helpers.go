@@ -132,3 +132,44 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
+// FormatQualityTag 统一质量标签格式为首字母大写、其余小写
+// 这是所有质量标签格式化的单一入口，确保文件夹名、文件名、元数据的一致性
+func FormatQualityTag(tag string) string {
+	// 特殊处理：Dolby Atmos 保持两个单词首字母大写
+	if tag == "Dolby Atmos" {
+		return "Dolby Atmos"
+	}
+
+	// 特殊处理：Hi-Res Lossless 保持格式
+	if tag == "Hi-Res Lossless" {
+		return "Hi-Res Lossless"
+	}
+
+	// 特殊处理：AAC 256 转换为 Aac 256
+	if tag == "AAC 256" {
+		return "Aac 256"
+	}
+
+	// ALAC -> Alac
+	if tag == "ALAC" {
+		return "Alac"
+	}
+
+	// Lossless -> Lossless (已经是正确格式)
+	if tag == "Lossless" {
+		return "Lossless"
+	}
+
+	// 其他情况：首字母大写，其余小写
+	if len(tag) == 0 {
+		return tag
+	}
+	
+	runes := []rune(tag)
+	if len(runes) == 1 {
+		return strings.ToUpper(string(runes[0]))
+	}
+	
+	return strings.ToUpper(string(runes[0])) + strings.ToLower(string(runes[1:]))
+}
+

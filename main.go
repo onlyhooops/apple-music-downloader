@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -14,6 +13,8 @@ import (
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/parser"
+	"main/internal/ui"
+
 	"github.com/spf13/pflag"
 )
 
@@ -24,7 +25,7 @@ func handleSingleMV(urlRaw string) {
 	storefront, albumId := parser.CheckUrlMv(urlRaw)
 	accountForMV, err := core.GetAccountForStorefront(storefront)
 	if err != nil {
-		fmt.Printf("MV 下载失败: %v\n", err)
+		ui.LogError("MV 下载失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
@@ -49,7 +50,7 @@ func handleSingleMV(urlRaw string) {
 
 	mvInfo, err := api.GetMVInfoFromAdam(albumId, accountForMV, storefront)
 	if err != nil {
-		fmt.Printf("获取 MV 信息失败: %v\n", err)
+		ui.LogError("获取 MV 信息失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
@@ -66,7 +67,13 @@ func handleSingleMV(urlRaw string) {
 	}
 	sanitizedArtistFolder := core.ForbiddenNames.ReplaceAllString(artistFolder, "_")
 
-	_, err = downloader.MvDownloader(albumId, core.Config.AlacSaveFolder, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+	// 使用 MvSaveFolder 配置（如果有），否则回退到 AlacSaveFolder
+	mvBasePath := core.Config.MvSaveFolder
+	if mvBasePath == "" {
+		mvBasePath = core.Config.AlacSaveFolder
+	}
+
+	_, err = downloader.MvDownloader(albumId, mvBasePath, sanitizedArtistFolder, "", storefront, nil, accountForMV)
 
 	if err != nil {
 		core.SharedLock.Lock()
@@ -88,7 +95,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if totalTasks > 1 {
-		fmt.Printf("[%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
+		ui.LogInfo("[%d/%d] 开始处理: %s", currentTask, totalTasks, urlRaw)
 	}
 
 	var storefront, albumId string
@@ -102,12 +109,12 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		tempStorefront, _ := parser.CheckUrlSong(urlRaw)
 		accountForSong, err := core.GetAccountForStorefront(tempStorefront)
 		if err != nil {
-			fmt.Printf("获取歌曲信息失败 for %s: %v\n", urlRaw, err)
+			ui.LogError("获取歌曲信息失败 for %s: %v", urlRaw, err)
 			return
 		}
 		urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
 		if err != nil {
-			fmt.Printf("获取歌曲链接失败 for %s: %v\n", urlRaw, err)
+			ui.LogError("获取歌曲链接失败 for %s: %v", urlRaw, err)
 			return
 		}
 		core.Dl_song = true
@@ -120,22 +127,22 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if albumId == "" {
-		fmt.Printf("无效的URL: %s\n", urlRaw)
+		ui.LogError("无效的URL: %s", urlRaw)
 		return
 	}
 
 	parse, err := url.Parse(urlRaw)
 	if err != nil {
-		log.Printf("解析URL失败 %s: %v", urlRaw, err)
+		ui.LogError("解析URL失败 %s: %v", urlRaw, err)
 		return
 	}
 	var urlArg_i = parse.Query().Get("i")
 	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
 	if err != nil {
-		fmt.Printf("专辑下载失败: %s -> %v\n", urlRaw, err)
+		ui.LogError("专辑下载失败: %s -> %v", urlRaw, err)
 	} else {
 		if totalTasks > 1 {
-			fmt.Printf("[%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
+			ui.LogSuccess("[%d/%d] 任务完成: %s", currentTask, totalTasks, urlRaw)
 		}
 	}
 }
@@ -145,14 +152,14 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 	for _, urlRaw := range initialUrls {
 		if strings.Contains(urlRaw, "/artist/") {
-			fmt.Printf("正在解析歌手页面: %s\n", urlRaw)
+			ui.LogInfo("正在解析歌手页面: %s", urlRaw)
 			artistAccount := &core.Config.Accounts[0]
 			urlArtistName, urlArtistID, err := api.GetUrlArtistName(urlRaw, artistAccount)
 			if err != nil {
-				fmt.Printf("获取歌手名称失败 for %s: %v\n", urlRaw, err)
+				ui.LogError("获取歌手名称失败 for %s: %v", urlRaw, err)
 				continue
 			}
-			
+
 			core.Config.ArtistFolderFormat = strings.NewReplacer(
 				"{UrlArtistName}", core.LimitString(urlArtistName),
 				"{ArtistId}", urlArtistID,
@@ -160,18 +167,18 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 			albumArgs, err := api.CheckArtist(urlRaw, artistAccount, "albums")
 			if err != nil {
-				fmt.Printf("获取歌手专辑失败 for %s: %v\n", urlRaw, err)
+				ui.LogError("获取歌手专辑失败 for %s: %v", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, albumArgs...)
-				fmt.Printf("从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
+				ui.LogSuccess("从歌手 %s 页面添加了 %d 张专辑到队列", urlArtistName, len(albumArgs))
 			}
 
 			mvArgs, err := api.CheckArtist(urlRaw, artistAccount, "music-videos")
 			if err != nil {
-				fmt.Printf("获取歌手MV失败 for %s: %v\n", urlRaw, err)
+				ui.LogError("获取歌手MV失败 for %s: %v", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, mvArgs...)
-				fmt.Printf("从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
+				ui.LogSuccess("从歌手 %s 页面添加了 %d 个MV到队列", urlArtistName, len(mvArgs))
 			}
 		} else {
 			finalUrls = append(finalUrls, urlRaw)
@@ -179,7 +186,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	}
 
 	if len(finalUrls) == 0 {
-		fmt.Println("队列中没有有效的链接可供下载。")
+		ui.LogWarn("队列中没有有效的链接可供下载")
 		return
 	}
 
@@ -187,12 +194,17 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	if isBatch && core.Config.TxtDownloadThreads > 1 {
 		numThreads = core.Config.TxtDownloadThreads
 	}
-	
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)
 
-	fmt.Printf("--- 开始下载任务 ---\n总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
+	ui.LogInfo("=== 开始下载任务 ===")
+	ui.LogInfo("总数: %d, 并发数: %d", totalTasks, numThreads)
+	ui.LogInfo("====================")
+
+	// 启动统一日志系统
+	ui.StartLogger()
 
 	for i, urlToProcess := range finalUrls {
 		wg.Add(1)
@@ -201,6 +213,9 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	}
 
 	wg.Wait()
+
+	// 停止日志系统
+	ui.StopLogger()
 }
 
 func main() {
@@ -281,6 +296,7 @@ func main() {
 		runDownloads(args, false)
 	}
 
+	// 最终统计输出（直接打印，不通过logger）
 	fmt.Printf("\n=======  [✔ ] Completed: %d/%d  |  [⚠ ] Warnings: %d  |  [✖ ] Errors: %d  =======\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
 	if core.Counter.Error > 0 {
 		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
