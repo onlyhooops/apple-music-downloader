@@ -1023,7 +1023,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		wg.Wait()
 		close(doneUI)
 		time.Sleep(200 * time.Millisecond)
-		ui.PrintUI()
+		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
 		
 		// 显示批次完成信息（多批次时）
 		if batch.TotalBatches > 1 {
