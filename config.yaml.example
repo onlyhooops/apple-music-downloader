@@ -43,6 +43,13 @@ accounts:
 alac-save-folder: "/media/Music/AppleMusic/Alac"
 atmos-save-folder: "/media/Music/AppleMusic/Atmos"
 mv-save-folder: "/media/Music/AppleMusic/MusicVideos"
+
+# 缓存中转机制设置
+# 启用后，将先下载到本地缓存文件夹，完成所有处理后再移动到目标路径
+# 适用于通过NFS等网络文件系统访问的远程路径，可显著提升效率和稳定性
+enable-cache: false             # 是否启用缓存机制 (true/false)
+cache-folder: "./Cache"         # 缓存文件夹路径，相对路径或绝对路径
+
 #################################
 # m3u8切片数量。                  #
 chunk_downloadthreads: 30       #

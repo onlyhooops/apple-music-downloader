@@ -156,6 +156,20 @@ func LoadConfig(configPath string) error {
 	if *Mv_max == 1080 {
 		Mv_max = &Config.MVMax
 	}
+
+	// 设置缓存文件夹默认值
+	if Config.CacheFolder == "" {
+		Config.CacheFolder = "./Cache"
+	}
+
+	// 如果启用缓存，显示缓存配置信息
+	if Config.EnableCache {
+		fmt.Printf("%s%s\n",
+			green("缓存中转机制已启用，缓存路径: "),
+			red(Config.CacheFolder),
+		)
+	}
+
 	return nil
 }
 

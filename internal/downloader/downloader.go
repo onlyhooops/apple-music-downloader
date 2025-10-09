@@ -2,6 +2,8 @@ package downloader
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"main/internal/api"
@@ -24,6 +26,29 @@ import (
 
 	"github.com/fatih/color"
 )
+
+// GetCacheBasePath 根据是否启用缓存返回基础路径
+// 返回值: (实际使用的路径, 最终目标路径, 是否使用缓存)
+func GetCacheBasePath(targetPath, albumId string) (string, string, bool) {
+	if !core.Config.EnableCache {
+		return targetPath, targetPath, false
+	}
+
+	// 创建唯一的缓存子目录（使用albumId的hash避免冲突）
+	hash := sha256.Sum256([]byte(albumId + targetPath))
+	cacheSubDir := hex.EncodeToString(hash[:])[:16]
+	cachePath := filepath.Join(core.Config.CacheFolder, cacheSubDir)
+
+	// 确保缓存目录存在
+	os.MkdirAll(cachePath, os.ModePerm)
+
+	return cachePath, targetPath, true
+}
+
+// SafeMoveFile 导出utils包中的SafeMoveFile函数，方便外部调用
+func SafeMoveFile(src, dst string) error {
+	return utils.SafeMoveFile(src, dst)
+}
 
 func checkAndReEncodeTrack(trackPath string, statusIndex int) (bool, error) {
 	ui.UpdateStatus(statusIndex, "正在检测...", color.New(color.FgCyan).SprintFunc())
@@ -401,11 +426,24 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	}
 
 	var baseSaveFolder string
+	var finalSaveFolder string
+	var usingCache bool
 	if core.Dl_atmos {
-		baseSaveFolder = core.Config.AtmosSaveFolder
+		finalSaveFolder = core.Config.AtmosSaveFolder
 	} else {
-		baseSaveFolder = core.Config.AlacSaveFolder
+		finalSaveFolder = core.Config.AlacSaveFolder
 	}
+
+	// 使用缓存机制
+	baseSaveFolder, finalSaveFolder, usingCache = GetCacheBasePath(finalSaveFolder, albumId)
+
+	// 延迟清理函数：如果使用缓存且出错，清理缓存目录
+	var downloadSuccess bool
+	defer func() {
+		if usingCache && !downloadSuccess {
+			utils.CleanupCacheDirectory(baseSaveFolder)
+		}
+	}()
 
 	var singerFoldername, albumFoldername string
 	if core.Config.ArtistFolderFormat != "" {
@@ -787,6 +825,45 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	ui.PrintUI()
 
 	fmt.Println(strings.Repeat("-", 50))
+
+	// 如果使用了缓存，将文件从缓存移动到最终目标
+	if usingCache {
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Printf("\n%s\n", cyan("正在从缓存转移文件到目标位置..."))
+
+		// 构建源文件夹和目标文件夹的完整路径
+		var finalSingerFolder string
+		if finalArtistDir != "" {
+			finalSingerFolder = filepath.Join(baseSaveFolder, finalArtistDir)
+		} else {
+			finalSingerFolder = baseSaveFolder
+		}
+		cacheAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
+
+		// 构建最终目标路径
+		var targetSingerFolder string
+		if finalArtistDir != "" {
+			targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
+		} else {
+			targetSingerFolder = finalSaveFolder
+		}
+		targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
+
+		// 移动专辑文件夹
+		if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
+			fmt.Printf("从缓存移动文件失败: %v\n", err)
+			return fmt.Errorf("从缓存移动文件失败: %w", err)
+		}
+
+		// 清理缓存目录
+		if err := utils.CleanupCacheDirectory(baseSaveFolder); err != nil {
+			fmt.Printf("清理缓存目录警告: %v\n", err)
+		}
+
+		fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("文件转移完成！"))
+	}
+
+	downloadSuccess = true
 	return nil
 }
 
