@@ -377,6 +377,7 @@ chunk_downloadthreads: 30  # Parallel chunk downloads
 - **[mp4decrypt](https://www.bento4.com/)** - Bento4 decryption tools
 
 ### 💝 Special Thanks
+- **[@sky8282](https://github.com/sky8282)** - For the excellent requests library and ongoing support
 - All contributors and testers who helped improve this project
 - Apple Music API researchers and reverse engineering community
 - Open source community for various libraries and tools
