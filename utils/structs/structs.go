@@ -62,6 +62,73 @@ type ConfigSet struct {
 	TxtDownloadThreads      int       `yaml:"txtDownloadThreads"`
 	EnableCache             bool      `yaml:"enable-cache"`
 	CacheFolder             string    `yaml:"cache-folder"`
+	BatchSize               int       `yaml:"batch-size"` // 分批处理的批次大小，0表示不分批
+}
+
+// TrackBatch 表示一个曲目批次
+type TrackBatch struct {
+	Tracks       []int  // 批次中的曲目编号列表
+	BatchNum     int    // 当前批次编号（从1开始）
+	TotalBatches int    // 总批次数
+	BatchSize    int    // 当前批次大小
+	IsLast       bool   // 是否最后一个批次
+}
+
+// BatchIterator 批次迭代器
+type BatchIterator struct {
+	tracks      []int
+	batchSize   int
+	currentIdx  int
+	totalTracks int
+}
+
+// NewBatchIterator 创建批次迭代器
+func NewBatchIterator(tracks []int, batchSize int) *BatchIterator {
+	if batchSize <= 0 {
+		batchSize = len(tracks)
+	}
+	return &BatchIterator{
+		tracks:      tracks,
+		batchSize:   batchSize,
+		currentIdx:  0,
+		totalTracks: len(tracks),
+	}
+}
+
+// Next 获取下一个批次，返回批次数据和是否还有更多批次
+func (b *BatchIterator) Next() (*TrackBatch, bool) {
+	if b.currentIdx >= b.totalTracks {
+		return nil, false
+	}
+	
+	totalBatches := (b.totalTracks + b.batchSize - 1) / b.batchSize
+	batchNum := (b.currentIdx / b.batchSize) + 1
+	
+	end := b.currentIdx + b.batchSize
+	if end > b.totalTracks {
+		end = b.totalTracks
+	}
+	
+	batch := &TrackBatch{
+		Tracks:       b.tracks[b.currentIdx:end],
+		BatchNum:     batchNum,
+		TotalBatches: totalBatches,
+		BatchSize:    end - b.currentIdx,
+		IsLast:       end == b.totalTracks,
+	}
+	
+	b.currentIdx = end
+	return batch, true
+}
+
+// HasNext 检查是否还有下一个批次
+func (b *BatchIterator) HasNext() bool {
+	return b.currentIdx < b.totalTracks
+}
+
+// Reset 重置迭代器
+func (b *BatchIterator) Reset() {
+	b.currentIdx = 0
 }
 
 type Counter struct {

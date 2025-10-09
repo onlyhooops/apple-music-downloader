@@ -835,41 +835,58 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		fmt.Println(color.New(color.FgCyan).SprintFunc()("开始进行本地文件校验..."))
 	}
 
-	core.TrackStatuses = make([]core.TrackStatus, len(selected))
-	for i, trackNum := range selected {
-		track := meta.Data[0].Relationships.Tracks.Data[trackNum-1]
-		manifest, err := api.GetInfoFromAdam(track.ID, mainAccount, storefront)
-		quality := "N/A"
-		if err == nil && manifest.Attributes.ExtendedAssetUrls.EnhancedHls != "" {
-			_, _, quality, err = parser.ExtractMedia(manifest.Attributes.ExtendedAssetUrls.EnhancedHls, false)
-			if err != nil {
-				quality = "获取失败"
+	// 使用批次迭代器进行数据层分批处理
+	batchIterator := structs.NewBatchIterator(selected, core.Config.BatchSize)
+	
+	for batch, hasMore := batchIterator.Next(); hasMore; batch, hasMore = batchIterator.Next() {
+		// 显示批次开始信息（多批次时）
+		if batch.TotalBatches > 1 {
+			if !core.DisableDynamicUI {
+				ui.Suspend()
 			}
-		} else {
-			quality = "AAC 256kbps"
+			cyan := color.New(color.FgCyan).SprintFunc()
+			core.SafePrintf("\n%s\n", cyan(fmt.Sprintf("📦 正在处理第 %d/%d 批曲目 (共 %d 首)", batch.BatchNum, batch.TotalBatches, batch.BatchSize)))
+			if !core.DisableDynamicUI {
+				ui.Resume()
+			}
+		}
+		
+		// 初始化当前批次的 TrackStatuses
+		core.TrackStatuses = make([]core.TrackStatus, len(batch.Tracks))
+		for i, trackNum := range batch.Tracks {
+			track := meta.Data[0].Relationships.Tracks.Data[trackNum-1]
+			manifest, err := api.GetInfoFromAdam(track.ID, mainAccount, storefront)
+			quality := "N/A"
+			if err == nil && manifest.Attributes.ExtendedAssetUrls.EnhancedHls != "" {
+				_, _, quality, err = parser.ExtractMedia(manifest.Attributes.ExtendedAssetUrls.EnhancedHls, false)
+				if err != nil {
+					quality = "获取失败"
+				}
+			} else {
+				quality = "AAC 256kbps"
+			}
+
+			core.TrackStatuses[i] = core.TrackStatus{
+				Index:       i,
+				TrackNum:    trackNum,
+				TrackTotal:  len(meta.Data[0].Relationships.Tracks.Data),
+				TrackName:   track.Attributes.Name,
+				Quality:     fmt.Sprintf("(%s)", quality),
+				Status:      "等待中",
+				StatusColor: color.New(color.FgWhite).SprintFunc(),
+			}
 		}
 
-		core.TrackStatuses[i] = core.TrackStatus{
-			Index:       i,
-			TrackNum:    trackNum,
-			TrackTotal:  len(meta.Data[0].Relationships.Tracks.Data),
-			TrackName:   track.Attributes.Name,
-			Quality:     fmt.Sprintf("(%s)", quality),
-			Status:      "等待中",
-			StatusColor: color.New(color.FgWhite).SprintFunc(),
+		doneUI := make(chan struct{})
+		// 只有在未禁用动态UI时才启动UI渲染
+		if !core.DisableDynamicUI {
+			go ui.RenderUI(doneUI)
 		}
-	}
 
-	doneUI := make(chan struct{})
-	// 只有在未禁用动态UI时才启动UI渲染
-	if !core.DisableDynamicUI {
-		go ui.RenderUI(doneUI)
-	}
+		var wg sync.WaitGroup
+		semaphore := make(chan struct{}, numThreads)
 
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, numThreads)
-
-	for i, trackNum := range selected {
+		for i, trackNum := range batch.Tracks {
 		wg.Add(1)
 		go func(trackIndexInMeta int, statusIndex int) {
 			semaphore <- struct{}{}
@@ -1001,12 +1018,26 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				return // Mission accomplished, exit goroutine
 			}
 		}(trackNum, i)
-	}
+		}
 
-	wg.Wait()
-	close(doneUI)
-	time.Sleep(200 * time.Millisecond)
-	ui.PrintUI()
+		wg.Wait()
+		close(doneUI)
+		time.Sleep(200 * time.Millisecond)
+		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
+		
+		// 显示批次完成信息（多批次时）
+		if batch.TotalBatches > 1 {
+			if !core.DisableDynamicUI {
+				ui.Suspend()
+			}
+			green := color.New(color.FgGreen).SprintFunc()
+			core.SafePrintf("%s\n", green(fmt.Sprintf("✅ 第 %d/%d 批完成", batch.BatchNum, batch.TotalBatches)))
+			time.Sleep(300 * time.Millisecond)
+			if !core.DisableDynamicUI {
+				ui.Resume()
+			}
+		}
+	} // 批次循环结束
 
 	fmt.Println(strings.Repeat("-", 50))
 

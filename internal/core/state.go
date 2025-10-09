@@ -172,6 +172,15 @@ func LoadConfig(configPath string) error {
 		)
 	}
 
+	// 设置分批下载默认值
+	if Config.BatchSize == 0 {
+		Config.BatchSize = 20
+		fmt.Println(green("📌 配置文件中未设置 'batch-size'，自动设为默认值 20（分批处理模式）"))
+	} else if Config.BatchSize < 0 {
+		Config.BatchSize = 0
+		fmt.Println(green("📌 'batch-size' 设置为负数，已调整为 0（禁用分批，一次性处理）"))
+	}
+
 	return nil
 }
 

@@ -17,6 +17,8 @@
 !MV_LOG_FIX.md
 !MV_QUALITY_DISPLAY.md
 !MV_PROGRESS_FIX.md
+!DATA_LAYER_BATCH_REFACTOR.md
+!BRANCH_COMPARISON.md
 !utils/*
 !internal/*
 config.yaml
