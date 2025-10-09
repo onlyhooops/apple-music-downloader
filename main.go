@@ -14,6 +14,7 @@ import (
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/parser"
+
 	"github.com/spf13/pflag"
 )
 
@@ -66,7 +67,12 @@ func handleSingleMV(urlRaw string) {
 	}
 	sanitizedArtistFolder := core.ForbiddenNames.ReplaceAllString(artistFolder, "_")
 
-	_, err = downloader.MvDownloader(albumId, core.Config.AlacSaveFolder, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+	// Use MVSaveFolder if configured, otherwise fallback to AlacSaveFolder
+	mvSaveFolder := core.Config.MVSaveFolder
+	if mvSaveFolder == "" {
+		mvSaveFolder = core.Config.AlacSaveFolder
+	}
+	_, err = downloader.MvDownloader(albumId, mvSaveFolder, sanitizedArtistFolder, "", storefront, nil, accountForMV)
 
 	if err != nil {
 		core.SharedLock.Lock()
@@ -152,7 +158,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 				fmt.Printf("获取歌手名称失败 for %s: %v\n", urlRaw, err)
 				continue
 			}
-			
+
 			core.Config.ArtistFolderFormat = strings.NewReplacer(
 				"{UrlArtistName}", core.LimitString(urlArtistName),
 				"{ArtistId}", urlArtistID,
@@ -187,7 +193,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	if isBatch && core.Config.TxtDownloadThreads > 1 {
 		numThreads = core.Config.TxtDownloadThreads
 	}
-	
+
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)

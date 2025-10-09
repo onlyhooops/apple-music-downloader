@@ -132,3 +132,35 @@ func Contains(slice []string, item string) bool {
 	return false
 }
 
+// FormatQualityTag 统一质量标签格式为首字母大写、其余小写
+// 按照报告规范处理 Dolby Atmos, Hi-Res Lossless, Alac, Aac 256 等标签
+func FormatQualityTag(tag string) string {
+	// 特殊处理：Dolby Atmos 保持两个单词首字母大写
+	if tag == "Dolby Atmos" || tag == "DOLBY ATMOS" || tag == "dolby atmos" {
+		return "Dolby Atmos"
+	}
+
+	// 特殊处理：Hi-Res Lossless 保持格式
+	if tag == "Hi-Res Lossless" || tag == "HI-RES LOSSLESS" || tag == "hi-res lossless" {
+		return "Hi-Res Lossless"
+	}
+
+	// 特殊处理：AAC 256 转换为 Aac 256
+	if tag == "AAC 256" || tag == "aac 256" {
+		return "Aac 256"
+	}
+
+	// ALAC -> Alac
+	if tag == "ALAC" || tag == "alac" {
+		return "Alac"
+	}
+
+	// 其他情况：保持原样或进行首字母大写处理
+	if len(tag) == 0 {
+		return tag
+	}
+	
+	// 如果已经是合理的格式，直接返回
+	return tag
+}
+
