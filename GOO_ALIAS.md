@@ -5,12 +5,12 @@
 | 项目 | 内容 |
 |------|------|
 | **命令别名** | `goo` |
-| **指向版本** | apple-music-downloader-v2.2.0 |
-| **配置文件** | `~/.zshrc` (第148行) |
-| **二进制路径** | `/root/apple-music-downloader/apple-music-downloader-v2.2.0` |
-| **文件大小** | 37MB |
-| **编译时间** | 2025-10-09 06:57 |
-| **版本特性** | 包含中文帮助、emoji美化、所有最新功能 |
+| **指向文件** | apple-music-downloader |
+| **配置文件** | `~/.zshrc` |
+| **二进制路径** | `/root/apple-music-downloader/apple-music-downloader` |
+| **文件大小** | 26MB |
+| **编译时间** | 2025-10-09 07:11 |
+| **版本特性** | 包含中文帮助、emoji美化、MV质量显示、所有最新功能 |
 
 ---
 
@@ -23,7 +23,7 @@
 ✅ **Emoji美化** - 终端输出更直观美观  
 ✅ **--no-ui 模式** - 纯日志输出支持  
 ✅ **缓存机制** - NFS性能优化  
-✅ **所有v2.2.0功能** - 完整的里程碑版本
+✅ **所有最新功能** - 包含MV质量显示等新特性
 
 ### 📤 Emoji 输出示例
 
@@ -119,8 +119,7 @@ goo --mv-max 2160 <mv-url>
 
 **配置内容**:
 ```bash
-# 第148行
-alias goo='/root/apple-music-downloader/apple-music-downloader-v2.2.0'
+alias goo='/root/apple-music-downloader/apple-music-downloader'
 ```
 
 ### 生效方式
@@ -135,7 +134,7 @@ source ~/.zshrc
 
 #### 方式3: 手动测试
 ```bash
-alias goo='/root/apple-music-downloader/apple-music-downloader-v2.2.0'
+alias goo='/root/apple-music-downloader/apple-music-downloader'
 ```
 
 ---
@@ -149,8 +148,8 @@ alias goo='/root/apple-music-downloader/apple-music-downloader-v2.2.0'
 | **启动方式** | `go run main.go` | `goo` |
 | **启动速度** | 慢（每次编译） | 快（直接运行） |
 | **命令长度** | 15个字符 | 3个字符 |
-| **版本** | 开发版 | v2.2.0 稳定版 |
-| **包含功能** | 当前代码 | 完整v2.2.0功能 |
+| **版本** | 开发版 | 最新稳定编译版 |
+| **包含功能** | 当前代码 | 所有最新功能 |
 
 ### 性能提升
 
@@ -162,23 +161,19 @@ alias goo='/root/apple-music-downloader/apple-music-downloader-v2.2.0'
 
 ## 📝 维护说明
 
-### 更新 goo 版本
+### 更新到最新版本
 
-当有新版本时，重新编译并更新别名：
+当有新代码时，重新编译即可（无需修改别名）：
 
 ```bash
-# 1. 编译新版本
+# 1. 重新编译（覆盖原文件）
 cd /root/apple-music-downloader
-go build -o apple-music-downloader-v2.3.0 main.go
+go build -ldflags "-s -w" -o apple-music-downloader main.go
 
-# 2. 更新别名
-sed -i "s|apple-music-downloader-v2.2.0|apple-music-downloader-v2.3.0|g" ~/.zshrc
-
-# 3. 重新加载
-source ~/.zshrc
-
-# 4. 验证
+# 2. 验证更新
 goo --help
+
+# 说明：使用统一的二进制文件名，无需每次修改别名配置
 ```
 
 ### 回退到开发模式
@@ -190,23 +185,38 @@ goo --help
 alias goo='go run main.go'
 
 # 永久回退（修改 ~/.zshrc）
-sed -i "s|/root/apple-music-downloader/apple-music-downloader-v2.2.0|go run main.go|g" ~/.zshrc
+sed -i "s|/root/apple-music-downloader/apple-music-downloader|go run main.go|g" ~/.zshrc
 source ~/.zshrc
 ```
 
-### 清理旧版本
+### 维护策略
+
+**⚠️ 重要：统一二进制文件管理**
+
+项目采用**单一二进制文件**策略，避免版本混乱：
 
 ```bash
-# 查看所有二进制文件
-ls -lh /root/apple-music-downloader/apple-music-downloader*
+# ✅ 正确：只保留一个二进制文件
+/root/apple-music-downloader/apple-music-downloader
 
-# 删除旧版本（保留当前版本）
-rm /root/apple-music-downloader/apple-music-downloader.baseline
-rm /root/apple-music-downloader/apple-music-downloader  # 如果不需要
+# ❌ 错误：不要创建多个版本
+# apple-music-downloader-v2.2.0
+# apple-music-downloader-v2.2.1
+# apple-music-downloader.baseline
 
-# 只保留 v2.2.0
-ls -lh /root/apple-music-downloader/apple-music-downloader-v2.2.0
+# 清理旧版本文件（如有）
+rm -f /root/apple-music-downloader/apple-music-downloader-v*
+rm -f /root/apple-music-downloader/apple-music-downloader.baseline
+
+# 验证只有一个文件
+ls -lh /root/apple-music-downloader/apple-music-downloader
 ```
+
+**优势：**
+- 🎯 版本清晰，易于识别
+- 🔧 维护简单，无需修改别名
+- 📦 节省空间，避免冗余
+- ✅ 更新方便，直接覆盖编译
 
 ---
 
@@ -348,6 +358,6 @@ goo-search "歌名"
 ---
 
 **配置时间**: 2025-10-09  
-**版本**: v2.2.0  
+**最后更新**: 2025-10-09 07:11  
 **状态**: ✅ 已生效
 

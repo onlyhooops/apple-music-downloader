@@ -61,7 +61,7 @@ func handleSingleMV(urlRaw string) {
 	// 输出MV信息
 	core.SafePrintf("🎤 歌手: %s\n", mvInfo.Data[0].Attributes.ArtistName)
 	core.SafePrintf("🎬 MV: %s\n", mvInfo.Data[0].Attributes.Name)
-	
+
 	// 提取发行年份
 	var releaseYear string
 	if len(mvInfo.Data[0].Attributes.ReleaseDate) >= 4 {
@@ -88,8 +88,10 @@ func handleSingleMV(urlRaw string) {
 	// 应用缓存机制
 	cachePath, finalPath, usingCache := downloader.GetCacheBasePath(mvSaveFolder, albumId)
 
-	core.SafePrintf("🎥 开始下载MV...\n")
-	mvOutPath, err := downloader.MvDownloader(albumId, cachePath, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+	mvOutPath, mvResolution, err := downloader.MvDownloader(albumId, cachePath, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+
+	// 分辨率信息已在 MvDownloader 内部显示，这里不再重复显示
+	_ = mvResolution
 
 	// 如果使用缓存且下载成功，移动文件到最终位置
 	if err == nil && usingCache && mvOutPath != "" {
@@ -105,7 +107,7 @@ func handleSingleMV(urlRaw string) {
 		} else {
 			core.SafePrintf("📥 MV文件转移完成！\n")
 			core.SafePrintf("💾 保存路径: %s\n", finalMvPath)
-			
+
 			// 清理缓存目录
 			mvCacheDir := filepath.Dir(mvOutPath)
 			for mvCacheDir != cachePath && mvCacheDir != "." && mvCacheDir != "/" {

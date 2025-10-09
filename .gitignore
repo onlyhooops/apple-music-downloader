@@ -15,6 +15,8 @@
 !EMOJI_DEMO.md
 !GOO_ALIAS.md
 !MV_LOG_FIX.md
+!MV_QUALITY_DISPLAY.md
+!MV_PROGRESS_FIX.md
 !utils/*
 !internal/*
 config.yaml
