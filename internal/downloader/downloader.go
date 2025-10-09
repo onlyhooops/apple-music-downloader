@@ -894,13 +894,10 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	ui.PrintUI()
 
 	fmt.Println(strings.Repeat("-", 50))
-
-	// 如果使用了缓存，将文件从缓存移动到最终目标
+	
+	// 如果使用了缓存，检查是否有新文件需要转移
 	if usingCache {
-		cyan := color.New(color.FgCyan).SprintFunc()
-		fmt.Printf("\n%s\n", cyan("正在从缓存转移文件到目标位置..."))
-
-		// 构建源文件夹和目标文件夹的完整路径
+		// 检查缓存目录中是否有文件（即是否有新下载的文件）
 		var finalSingerFolder string
 		if finalArtistDir != "" {
 			finalSingerFolder = filepath.Join(baseSaveFolder, finalArtistDir)
@@ -908,30 +905,53 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			finalSingerFolder = baseSaveFolder
 		}
 		cacheAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
-
-		// 构建最终目标路径
-		var targetSingerFolder string
-		if finalArtistDir != "" {
-			targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
+		
+		// 检查缓存专辑目录是否存在且有内容
+		hasNewFiles := false
+		if info, err := os.Stat(cacheAlbumFolder); err == nil && info.IsDir() {
+			// 检查目录是否有文件
+			entries, _ := os.ReadDir(cacheAlbumFolder)
+			for _, entry := range entries {
+				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".m4a") {
+					hasNewFiles = true
+					break
+				}
+			}
+		}
+		
+		if hasNewFiles {
+			// 有新文件，需要转移
+			cyan := color.New(color.FgCyan).SprintFunc()
+			fmt.Printf("\n%s\n", cyan("正在从缓存转移文件到目标位置..."))
+			
+			// 构建最终目标路径
+			var targetSingerFolder string
+			if finalArtistDir != "" {
+				targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
+			} else {
+				targetSingerFolder = finalSaveFolder
+			}
+			targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
+			
+			// 移动专辑文件夹
+			if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
+				fmt.Printf("从缓存移动文件失败: %v\n", err)
+				return fmt.Errorf("从缓存移动文件失败: %w", err)
+			}
+			
+			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("文件转移完成！"))
 		} else {
-			targetSingerFolder = finalSaveFolder
+			// 所有文件都已存在，只是校验
+			green := color.New(color.FgGreen).SprintFunc()
+			fmt.Printf("\n%s\n", green("已完成本地文件校验 任务完成！"))
 		}
-		targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
-
-		// 移动专辑文件夹
-		if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
-			fmt.Printf("从缓存移动文件失败: %v\n", err)
-			return fmt.Errorf("从缓存移动文件失败: %w", err)
-		}
-
+		
 		// 清理缓存目录
 		if err := utils.CleanupCacheDirectory(baseSaveFolder); err != nil {
 			fmt.Printf("清理缓存目录警告: %v\n", err)
 		}
-
-		fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("文件转移完成！"))
 	}
-
+	
 	downloadSuccess = true
 	return nil
 }
