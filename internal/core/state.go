@@ -102,17 +102,17 @@ func LoadConfig(configPath string) error {
 
 	if Config.TxtDownloadThreads <= 0 {
 		Config.TxtDownloadThreads = 5
-		fmt.Println(green("配置文件中未设置 'txtDownloadThreads'，自动设为默认值 5"))
+		fmt.Println(green("📌 配置文件中未设置 'txtDownloadThreads'，自动设为默认值 5"))
 	}
 
 	if Config.BufferSizeKB <= 0 {
 		Config.BufferSizeKB = 4096
-		fmt.Println(green("配置文件中未设置 'BufferSizeKB'，自动设为默认值 4096KB (4MB)"))
+		fmt.Println(green("📌 配置文件中未设置 'BufferSizeKB'，自动设为默认值 4096KB (4MB)"))
 	}
 
 	if Config.NetworkReadBufferKB <= 0 {
 		Config.NetworkReadBufferKB = 4096
-		fmt.Println(green("配置文件中未设置 'NetworkReadBufferKB'，自动设为默认值 4096KB (4MB)"))
+		fmt.Println(green("📌 配置文件中未设置 'NetworkReadBufferKB'，自动设为默认值 4096KB (4MB)"))
 	}
 
 	useAutoDetect := true
@@ -120,7 +120,7 @@ func LoadConfig(configPath string) error {
 		MaxPathLength = Config.MaxPathLength
 		useAutoDetect = false
 		fmt.Printf("%s%s\n",
-			green("从配置文件强制使用最大路径长度限制: "),
+			green("📌 从配置文件强制使用最大路径长度限制: "),
 			red(fmt.Sprintf("%d", MaxPathLength)),
 		)
 	}
@@ -129,13 +129,13 @@ func LoadConfig(configPath string) error {
 		if runtime.GOOS == "windows" {
 			MaxPathLength = 255
 			fmt.Printf("%s%d\n",
-				green("检测到 Windows 系统, 已自动设置最大路径长度限制为: "),
+				green("📌 检测到 Windows 系统, 已自动设置最大路径长度限制为: "),
 				MaxPathLength,
 			)
 		} else {
 			MaxPathLength = 4096
 			fmt.Printf("%s%s%s%d\n",
-				green("检测到 "),
+				green("📌 检测到 "),
 				red(runtime.GOOS),
 				green(" 系统, 已自动设置最大路径长度限制为: "),
 				MaxPathLength,
@@ -167,7 +167,7 @@ func LoadConfig(configPath string) error {
 	// 如果启用缓存，显示缓存配置信息
 	if Config.EnableCache {
 		fmt.Printf("%s%s\n",
-			green("缓存中转机制已启用，缓存路径: "),
+			green("📌 缓存中转机制已启用，缓存路径: "),
 			red(Config.CacheFolder),
 		)
 	}

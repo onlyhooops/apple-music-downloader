@@ -594,8 +594,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	finalAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
 	os.MkdirAll(finalAlbumFolder, os.ModePerm)
 
-	core.SafePrintf("歌手: %s\n", meta.Data[0].Attributes.ArtistName)
-	core.SafePrintf("专辑: %s\n", meta.Data[0].Attributes.Name)
+	core.SafePrintf("🎤 歌手: %s\n", meta.Data[0].Attributes.ArtistName)
+	core.SafePrintf("💽 专辑: %s\n", meta.Data[0].Attributes.Name)
 
 	if core.Config.SaveArtistCover && !(strings.Contains(albumId, "pl.")) {
 		if len(meta.Data[0].Relationships.Artists.Data) > 0 {
@@ -641,7 +641,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		ui.Resume()
 	}
 
-	core.SafePrintln("正在进行版权预检，请稍候...")
+	core.SafePrintln("🔬 正在进行版权预检，请稍候...")
 	var workingAccounts []structs.Account
 	if len(meta.Data[0].Relationships.Tracks.Data) > 0 {
 		firstTrackId := meta.Data[0].Relationships.Tracks.Data[0].ID
@@ -720,7 +720,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	core.SafePrintf("%s %s | %s | %s | %s\n",
-		green("音源:"),
+		green("📡 音源:"),
 		green(albumQualityString),
 		green(fmt.Sprintf("%d 线程", numThreads)),
 		yellow(regionsStr),
@@ -1037,7 +1037,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		if hasNewFiles {
 			// 有新文件，需要转移
 			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\n%s\n", cyan("正在从缓存转移文件到目标位置..."))
+			fmt.Printf("\n%s\n", cyan("♻️ 正在从缓存转移文件到目标位置..."))
 
 			// 构建最终目标路径
 			var targetSingerFolder string
@@ -1054,11 +1054,11 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				return fmt.Errorf("从缓存移动文件失败: %w", err)
 			}
 
-			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("文件转移完成！"))
+			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("✅ 文件转移完成！"))
 		} else {
 			// 所有文件都已存在，只是校验
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("\n%s\n", green("已完成本地文件校验 任务完成！"))
+			fmt.Printf("\n%s\n", green("✅ 已完成本地文件校验 任务完成！"))
 		}
 
 		// 清理缓存目录

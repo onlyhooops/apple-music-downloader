@@ -126,7 +126,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if totalTasks > 1 {
-		core.SafePrintf("[%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
+		core.SafePrintf("🧾 [%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
 	}
 
 	var storefront, albumId string
@@ -173,7 +173,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		core.SafePrintf("专辑下载失败: %s -> %v\n", urlRaw, err)
 	} else {
 		if totalTasks > 1 {
-			core.SafePrintf("[%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
+			core.SafePrintf("✅ [%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
 		}
 	}
 }
@@ -183,7 +183,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 	for _, urlRaw := range initialUrls {
 		if strings.Contains(urlRaw, "/artist/") {
-			core.SafePrintf("正在解析歌手页面: %s\n", urlRaw)
+			core.SafePrintf("🔍 正在解析歌手页面: %s\n", urlRaw)
 			artistAccount := &core.Config.Accounts[0]
 			urlArtistName, urlArtistID, err := api.GetUrlArtistName(urlRaw, artistAccount)
 			if err != nil {
@@ -201,7 +201,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 				core.SafePrintf("获取歌手专辑失败 for %s: %v\n", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, albumArgs...)
-				core.SafePrintf("从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
+				core.SafePrintf("📀 从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
 			}
 
 			mvArgs, err := api.CheckArtist(urlRaw, artistAccount, "music-videos")
@@ -209,7 +209,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 				core.SafePrintf("获取歌手MV失败 for %s: %v\n", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, mvArgs...)
-				core.SafePrintf("从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
+				core.SafePrintf("🎬 从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
 			}
 		} else {
 			finalUrls = append(finalUrls, urlRaw)
@@ -230,7 +230,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)
 
-	core.SafePrintf("--- 开始下载任务 ---\n总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
+	core.SafePrintf("📋 开始下载任务\n📝 总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
 
 	for i, urlToProcess := range finalUrls {
 		wg.Add(1)
@@ -319,7 +319,7 @@ func main() {
 		runDownloads(args, false)
 	}
 
-	fmt.Printf("\n已完成: %d/%d | 警告: %d | 错误: %d\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	fmt.Printf("\n📦 已完成: %d/%d | 警告: %d | 错误: %d\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
 	if core.Counter.Error > 0 {
 		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}
