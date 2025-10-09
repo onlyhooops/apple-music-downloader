@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -72,7 +73,38 @@ func handleSingleMV(urlRaw string) {
 	if mvSaveFolder == "" {
 		mvSaveFolder = core.Config.AlacSaveFolder
 	}
-	_, err = downloader.MvDownloader(albumId, mvSaveFolder, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+
+	// 应用缓存机制
+	cachePath, finalPath, usingCache := downloader.GetCacheBasePath(mvSaveFolder, albumId)
+
+	mvOutPath, err := downloader.MvDownloader(albumId, cachePath, sanitizedArtistFolder, "", storefront, nil, accountForMV)
+
+	// 如果使用缓存且下载成功，移动文件到最终位置
+	if err == nil && usingCache && mvOutPath != "" {
+		// 计算最终路径
+		relPath, _ := filepath.Rel(cachePath, mvOutPath)
+		finalMvPath := filepath.Join(finalPath, relPath)
+
+		// 移动文件
+		if moveErr := downloader.SafeMoveFile(mvOutPath, finalMvPath); moveErr != nil {
+			fmt.Printf("从缓存移动MV文件失败: %v\n", moveErr)
+			err = moveErr
+		} else {
+			// 清理缓存目录
+			mvCacheDir := filepath.Dir(mvOutPath)
+			for mvCacheDir != cachePath && mvCacheDir != "." && mvCacheDir != "/" {
+				if os.Remove(mvCacheDir) != nil {
+					break
+				}
+				mvCacheDir = filepath.Dir(mvCacheDir)
+			}
+		}
+	}
+
+	// 如果出错且使用了缓存，清理缓存
+	if err != nil && usingCache {
+		os.RemoveAll(cachePath)
+	}
 
 	if err != nil {
 		core.SharedLock.Lock()
@@ -287,7 +319,7 @@ func main() {
 		runDownloads(args, false)
 	}
 
-	fmt.Printf("\n=======  [✔ ] Completed: %d/%d  |  [⚠ ] Warnings: %d  |  [✖ ] Errors: %d  =======\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	fmt.Printf("\n已完成: %d/%d | 警告: %d | 错误: %d\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
 	if core.Counter.Error > 0 {
 		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}

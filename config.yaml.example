@@ -1,0 +1,126 @@
+# ----------------------------------------------------------------
+# 账号配置列表 (Account Configuration List)
+# 在此列表中配置您的所有账号。下载专辑时，程序将从此列表中轮流选取账号进行并行解密。
+# 下载单曲时，程序将根据链接的区域 (如 /cn/, /us/) 自动匹配拥有相同 "storefront" 值的账号。
+# ----------------------------------------------------------------
+# 
+# 📝 使用说明：
+# 1. 复制此文件为 config.yaml
+# 2. 将 "your-media-user-token" 替换为你的真实 token
+# 3. 根据需要配置各项参数
+# 4. config.yaml 不会被提交到 Git（已在 .gitignore 中）
+# 
+# 🔐 如何获取 media-user-token：
+# 1. 打开 Apple Music 网页版并登录
+# 2. 打开开发者工具 (F12)
+# 3. 进入 Application -> Cookies -> https://music.apple.com
+# 4. 找到名为 "media-user-token" 的 cookie，复制其值
+#
+# ----------------------------------------------------------------
+accounts:
+  - name: "CN"           # 账号名称，方便识别
+    storefront: "cn"     # 账号所属区域 (必须小写, 如 cn, us, jp, hk)
+    media-user-token: "your-media-user-token-here"  # 替换为你的真实 token
+    authorization-token: "your-authorization-token" # 可选，如果留空，程序会自动获取
+    decrypt-m3u8-port: "127.0.0.1:10020" # 此账号对应的解密服务端口
+    get-m3u8-port: "127.0.0.1:10021"     # 此账号对应的M3U8获取服务端口
+# ----------------------------------------------------------------
+  # - name: "US"
+  #   storefront: "us"
+  #   media-user-token: "your-media-user-token-here"
+  #   authorization-token: "your-us-auth-token"
+  #   decrypt-m3u8-port: "127.0.0.1:20020"
+  #   get-m3u8-port: "127.0.0.1:20021"
+# ----------------------------------------------------------------
+  # - name: "JP"
+  #   storefront: "jp"
+  #   media-user-token: "your-media-user-token-here"
+  #   authorization-token: "your-us-auth-token"
+  #   decrypt-m3u8-port: "127.0.0.1:30020"
+  #   get-m3u8-port: "127.0.0.1:30021"
+# ----------------------------------------------------------------  
+# 下载保存路径设置
+alac-save-folder: "/media/Music/AppleMusic/Alac"
+atmos-save-folder: "/media/Music/AppleMusic/Atmos"
+mv-save-folder: "/media/Music/AppleMusic/MusicVideos"
+
+# 缓存中转机制设置
+# 启用后，将先下载到本地缓存文件夹，完成所有处理后再移动到目标路径
+# 适用于通过NFS等网络文件系统访问的远程路径，可显著提升效率和稳定性
+enable-cache: false             # 是否启用缓存机制 (true/false)
+cache-folder: "./Cache"         # 缓存文件夹路径，相对路径或绝对路径
+
+#################################
+# m3u8切片数量。                  #
+chunk_downloadthreads: 30       #
+# 网络块大小                      #
+NetworkReadBufferKB: 4096 # kb  #
+# I/O缓冲，过大将导致内存占用过高    #
+BufferSizeKB: 4 # kb            #
+# 下载线程数，最低为 1             #
+aac_downloadthreads: 5         #
+lossless_downloadthreads: 5    #
+hires_downloadthreads: 5       #
+#################################
+#max-memory-limit: 256 # 单位 MB，已丢弃
+# ---------------------------------------------------------------- 
+ffmpeg-fix: true   #是否在所有下载完成后检测编码问题(推荐开启,会在完成后询问用户是否修复)
+ffmpeg-check-args: "-map 0:a:0 -f wav -hide_banner -loglevel error -"    #ffmpeg检测参数(只检测音频流，使用wav格式强制完整解码，error级别可捕获所有编码错误)
+ffmpeg-encode-args: "-c:v copy -c:a alac -avoid_negative_ts make_zero -f mp4 -y"     #重编码参数
+# ----------------------------------------------------------------  
+  
+language: "" # 语言代码, 例如 "zh-CN", "en-US". 留空则自动检测.
+             # 各区域支持的语言列表: https://gist.github.com/itouakirai/c8ba9df9dc65bd300094103b058731d0
+# 歌词设置
+# ---------------------------------------------------------------- 
+# 自动识别链接的区域并使用此区域的账号获取歌词
+# 当发起任务的链接区域不在账号列表时,可选账号列表下的区域为默认下载歌词区域
+default-lyric-storefront: "cn"
+# ---------------------------------------------------------------- 
+lrc-type: "lyrics"   # 可选: "lyrics" (普通歌词) 或 "syllable-lyrics" (逐字歌词)
+lrc-format: "lrc"    # 可选: "lrc" 或 "ttml"
+embed-lrc: true      # 是否将歌词嵌入音频文件
+save-lrc-file: false  # 是否将歌词另存为 .lrc 文件
+
+# 封面与插图设置
+embed-cover: true
+cover-size: "5000x5000"
+cover-format: "jpg"             # 可选: "jpg", "png", "original"
+save-artist-cover: true        #歌手头像
+save-animated-artwork: true    # 需要 ffmpeg
+emby-animated-artwork: true    # 需要 ffmpeg
+
+# M3U8 获取模式
+get-m3u8-from-device: true
+get-m3u8-mode: "hires" # 可选: "all" (获取所有) 或 "hires" (仅探测Hi-Res)
+# 音频格式偏好
+aac-type: "aac-lc"        # 可选: "aac-lc", "aac", "aac-binaural", "aac-downmix"
+alac-max: 192000          # 可选: 192000, 96000, 48000, 44100
+atmos-max: 2768           # 可选: 2768, 2448
+download-videos: true     #是否下载视频 true开启，false关闭
+mv-audio-type: "atmos"    # MV音轨偏好, 可选: "atmos", "ac3", "aac"
+mv-max: 2160              # MV视频分辨率偏好
+
+# 绝对路径字符限制,留空就自动检测系统：windows 255  linux/mac 4096 其他系统自行测试
+max-path-length: 255
+# 歌手，专辑，曲目名，各个字符最大限制
+limit-max: 200
+
+# 文件与文件夹命名格式
+# 可用变量: {AlbumId}, {AlbumName}, {ArtistName}, {ReleaseDate}, {ReleaseYear}, {UPC}, {Copyright}, {Quality}, {Codec}, {Tag}, {RecordLabel}
+album-folder-format: "{AlbumName} {Tag}"
+# 可用变量: {PlaylistId}, {PlaylistName}, {ArtistName}, {Quality}, {Codec}, {Tag}
+playlist-folder-format: "{PlaylistName}"
+# 可用变量: {SongId}, {SongNumer}, {SongName}, {DiscNumber}, {TrackNumber}, {Quality}, {Codec}, {Tag}
+song-file-format: "{SongNumer}. {SongName}"
+# 可用变量: {ArtistId}, {ArtistName}, {UrlArtistName}
+artist-folder-format: "{UrlArtistName}" # 留空则不创建艺术家文件夹
+
+# 特殊标签显示
+explicit-choice: "[E]"
+clean-choice: "[C]"
+apple-master-choice: "[M]"
+
+# 播放列表元数据策略
+use-songinfo-for-playlist: false
+dl-albumcover-for-playlist: false
