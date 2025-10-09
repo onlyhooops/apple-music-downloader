@@ -16,26 +16,27 @@ import (
 )
 
 var (
-	ForbiddenNames = regexp.MustCompile(`[/\\<>:"|?*]`)
-	Dl_atmos       bool
-	Dl_aac         bool
-	Dl_select      bool
-	Dl_song        bool
-	Artist_select  bool
-	Debug_mode     bool
-	Alac_max       *int
-	Atmos_max      *int
-	Mv_max         *int
-	Mv_audio_type  *string
-	Aac_type       *string
-	Config         structs.ConfigSet
-	Counter        structs.Counter
-	OkDict         = make(map[string][]int)
-	ConfigPath     string
-	OutputPath     string
-	SharedLock     sync.Mutex
-	DeveloperToken string
-	MaxPathLength  int
+	ForbiddenNames   = regexp.MustCompile(`[/\\<>:"|?*]`)
+	Dl_atmos         bool
+	Dl_aac           bool
+	Dl_select        bool
+	Dl_song          bool
+	Artist_select    bool
+	Debug_mode       bool
+	DisableDynamicUI bool // 禁用动态UI的标志，启用后使用纯日志输出
+	Alac_max         *int
+	Atmos_max        *int
+	Mv_max           *int
+	Mv_audio_type    *string
+	Aac_type         *string
+	Config           structs.ConfigSet
+	Counter          structs.Counter
+	OkDict           = make(map[string][]int)
+	ConfigPath       string
+	OutputPath       string
+	SharedLock       sync.Mutex
+	DeveloperToken   string
+	MaxPathLength    int
 )
 
 type TrackStatus struct {
@@ -68,6 +69,7 @@ func InitFlags() {
 	pflag.BoolVar(&Dl_song, "song", false, "Enable single song download mode")
 	pflag.BoolVar(&Artist_select, "all-album", false, "Download all artist albums")
 	pflag.BoolVar(&Debug_mode, "debug", false, "Enable debug mode to show audio quality information")
+	pflag.BoolVar(&DisableDynamicUI, "no-ui", false, "禁用动态终端UI，回退到纯日志输出模式（用于CI/调试或兼容性）")
 	Alac_max = pflag.Int("alac-max", 0, "Specify the max quality for download alac")
 	Atmos_max = pflag.Int("atmos-max", 0, "Specify the max quality for download atmos")
 	Aac_type = pflag.String("aac-type", "aac", "Select AAC type, aac aac-binaural aac-downmix")
