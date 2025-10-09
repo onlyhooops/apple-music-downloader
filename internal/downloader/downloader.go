@@ -1,6 +1,7 @@
 package downloader
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -723,6 +724,100 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	core.RipLock.Lock()
 	defer core.RipLock.Unlock()
 
+	// 检查所有文件是否已存在（用于询问用户是否跳过校验）
+	var checkSaveFolder string
+	if usingCache {
+		checkSaveFolder = finalSaveFolder // 使用缓存时检查最终目标路径
+	} else {
+		checkSaveFolder = baseSaveFolder
+	}
+
+	allFilesExist := true
+	for _, trackNum := range selected {
+		track := meta.Data[0].Relationships.Tracks.Data[trackNum-1]
+
+		// 构建文件路径进行检查
+		var singerFoldername, albumFoldername string
+		if core.Config.ArtistFolderFormat != "" {
+			if strings.Contains(albumId, "pl.") {
+				singerFoldername = strings.NewReplacer(
+					"{ArtistName}", "Apple Music", "{ArtistId}", "", "{UrlArtistName}", "Apple Music",
+				).Replace(core.Config.ArtistFolderFormat)
+			} else if len(meta.Data[0].Relationships.Artists.Data) > 0 {
+				singerFoldername = strings.NewReplacer(
+					"{UrlArtistName}", core.LimitString(meta.Data[0].Attributes.ArtistName),
+					"{ArtistName}", core.LimitString(meta.Data[0].Attributes.ArtistName),
+					"{ArtistId}", meta.Data[0].Relationships.Artists.Data[0].ID,
+				).Replace(core.Config.ArtistFolderFormat)
+			}
+		}
+
+		if strings.Contains(albumId, "pl.") {
+			albumFoldername = strings.NewReplacer(
+				"{PlaylistName}", core.LimitString(meta.Data[0].Attributes.Name),
+				"{PlaylistId}", albumId,
+			).Replace(core.Config.PlaylistFolderFormat)
+		} else {
+			albumFoldername = strings.NewReplacer(
+				"{ArtistName}", core.LimitString(meta.Data[0].Attributes.ArtistName),
+				"{AlbumName}", core.LimitString(meta.Data[0].Attributes.Name),
+				"{AlbumId}", albumId,
+			).Replace(core.Config.AlbumFolderFormat)
+		}
+
+		songName := strings.NewReplacer(
+			"{SongNumer}", fmt.Sprintf("%02d", trackNum),
+			"{SongName}", core.LimitString(track.Attributes.Name),
+		).Replace(core.Config.SongFileFormat)
+
+		sanitizedSingerFolder := core.ForbiddenNames.ReplaceAllString(singerFoldername, "_")
+		sanitizedAlbumFolder := core.ForbiddenNames.ReplaceAllString(albumFoldername, "_")
+		sanitizedSongName := core.ForbiddenNames.ReplaceAllString(songName, "_")
+		filenameWithExt := fmt.Sprintf("%s.m4a", sanitizedSongName)
+
+		checkArtistDir, checkAlbumDir, checkFilename := utils.EnsureSafePath(checkSaveFolder, sanitizedSingerFolder, sanitizedAlbumFolder, filenameWithExt)
+		var checkSingerFolder string
+		if checkArtistDir != "" {
+			checkSingerFolder = filepath.Join(checkSaveFolder, checkArtistDir)
+		} else {
+			checkSingerFolder = checkSaveFolder
+		}
+		checkAlbumFolder := filepath.Join(checkSingerFolder, checkAlbumDir)
+		checkFilePath := filepath.Join(checkAlbumFolder, checkFilename)
+
+		exists, _ := utils.FileExists(checkFilePath)
+		if !exists {
+			allFilesExist = false
+			break
+		}
+	}
+
+	// 如果所有文件都已存在，询问用户是否要进行校验
+	if allFilesExist && len(selected) > 0 {
+		cyan := color.New(color.FgCyan).SprintFunc()
+		yellow := color.New(color.FgYellow).SprintFunc()
+		fmt.Printf("\n%s\n", cyan("检测到所有文件都已存在于目标位置。"))
+		fmt.Printf("%s", yellow("是否进行本地文件校验？(y/N): "))
+
+		reader := bufio.NewReader(os.Stdin)
+		response, _ := reader.ReadString('\n')
+		response = strings.TrimSpace(strings.ToLower(response))
+
+		if response != "y" && response != "yes" {
+			fmt.Println(color.New(color.FgGreen).SprintFunc()("跳过校验，任务完成！"))
+			// 标记所有文件为已完成
+			for _, trackNum := range selected {
+				core.OkDict[albumId] = append(core.OkDict[albumId], trackNum)
+				core.SharedLock.Lock()
+				core.Counter.Total++
+				core.Counter.Success++
+				core.SharedLock.Unlock()
+			}
+			return nil
+		}
+		fmt.Println(color.New(color.FgCyan).SprintFunc()("开始进行本地文件校验..."))
+	}
+
 	core.TrackStatuses = make([]core.TrackStatus, len(selected))
 	for i, trackNum := range selected {
 		track := meta.Data[0].Relationships.Tracks.Data[trackNum-1]
@@ -894,7 +989,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	ui.PrintUI()
 
 	fmt.Println(strings.Repeat("-", 50))
-	
+
 	// 如果使用了缓存，检查是否有新文件需要转移
 	if usingCache {
 		// 检查缓存目录中是否有文件（即是否有新下载的文件）
@@ -905,7 +1000,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			finalSingerFolder = baseSaveFolder
 		}
 		cacheAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
-		
+
 		// 检查缓存专辑目录是否存在且有内容
 		hasNewFiles := false
 		if info, err := os.Stat(cacheAlbumFolder); err == nil && info.IsDir() {
@@ -918,12 +1013,12 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				}
 			}
 		}
-		
+
 		if hasNewFiles {
 			// 有新文件，需要转移
 			cyan := color.New(color.FgCyan).SprintFunc()
 			fmt.Printf("\n%s\n", cyan("正在从缓存转移文件到目标位置..."))
-			
+
 			// 构建最终目标路径
 			var targetSingerFolder string
 			if finalArtistDir != "" {
@@ -932,26 +1027,26 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				targetSingerFolder = finalSaveFolder
 			}
 			targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
-			
+
 			// 移动专辑文件夹
 			if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
 				fmt.Printf("从缓存移动文件失败: %v\n", err)
 				return fmt.Errorf("从缓存移动文件失败: %w", err)
 			}
-			
+
 			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("文件转移完成！"))
 		} else {
 			// 所有文件都已存在，只是校验
 			green := color.New(color.FgGreen).SprintFunc()
 			fmt.Printf("\n%s\n", green("已完成本地文件校验 任务完成！"))
 		}
-		
+
 		// 清理缓存目录
 		if err := utils.CleanupCacheDirectory(baseSaveFolder); err != nil {
 			fmt.Printf("清理缓存目录警告: %v\n", err)
 		}
 	}
-	
+
 	downloadSuccess = true
 	return nil
 }
