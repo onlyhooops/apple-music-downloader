@@ -1037,7 +1037,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		if hasNewFiles {
 			// 有新文件，需要转移
 			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\n%s\n", cyan("♻️ 正在从缓存转移文件到目标位置..."))
+			fmt.Printf("\n%s\n", cyan("📤 正在从缓存转移文件到目标位置..."))
 
 			// 构建最终目标路径
 			var targetSingerFolder string
@@ -1054,11 +1054,11 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				return fmt.Errorf("从缓存移动文件失败: %w", err)
 			}
 
-			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("✅ 文件转移完成！"))
+			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("📥 文件转移完成！"))
 		} else {
 			// 所有文件都已存在，只是校验
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("\n%s\n", green("✅ 已完成本地文件校验 任务完成！"))
+			fmt.Printf("\n%s\n", green("📥 已完成本地文件校验 任务完成！"))
 		}
 
 		// 清理缓存目录
