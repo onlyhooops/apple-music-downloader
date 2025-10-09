@@ -6,6 +6,12 @@
 !go.sum
 !main.go
 !README.md
+!README-CN.md
+!CHANGELOG.md
+!CACHE_MECHANISM.md
+!CACHE_UPDATE.md
+!QUICKSTART_CACHE.md
 !utils/*
+!internal/*
 config.yaml
 !config.yaml.example
