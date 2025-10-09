@@ -61,6 +61,8 @@ BufferSizeKB: 4 # kb            #
 aac_downloadthreads: 5         #
 lossless_downloadthreads: 5    #
 hires_downloadthreads: 5       #
+# 分批下载配置                    #
+batch-size: 20  # 每批处理曲目数，0表示不分批（一次性处理）
 #################################
 #max-memory-limit: 256 # 单位 MB，已丢弃
 # ---------------------------------------------------------------- 
