@@ -8,6 +8,37 @@
 
 ---
 
+## 🎉 最新更新 (v2.1.0 - v2.3.0)
+
+### 📊 近期重大更新
+
+#### v2.3.0 - MV 下载增强 (2025-10-09)
+- **🎬 MV 质量显示** - 自动检测并显示视频质量（4K/1080P/720P/480P）
+- **📈 真实进度追踪** - 修复 MV 下载进度显示真实总大小，而非分片大小
+- **🎨 UI 优化** - 精简进度条，明确标注视频/音频流
+- **技术实现**：并发 HEAD 请求获取大小，自定义进度描述
+
+#### v2.2.0 - UI 与日志治理 (2025-10-09)
+- **🌏 中文帮助菜单** - `--help` 参数说明完全汉化
+- **✨ Emoji 美化** - 美观的终端输出，配合上下文 emoji 图标
+- **🔧 线程安全日志** - OutputMutex + SafePrintf 实现清晰并发日志
+- **📝 文档整合** - 整理并优化所有项目文档
+
+#### v2.1.0 - 性能与用户体验改进 (2025-10-09)
+- **⚡ 缓存中转机制** - NFS/网络存储下载速度提升 50-70%
+- **🔍 交互式文件检查** - 智能提示已存在文件，提供跳过选项
+- **📊 智能状态消息** - 区分缓存转移和本地校验状态
+- **🎯 质量标签标准化** - Emby 兼容 MV 路径和统一质量标签
+- **🐛 关键修复** - FFmpeg 路径检测、缓存跳过逻辑、文件检查改进
+
+### 📈 改进总结
+- **代码质量**：新增 150 行优化代码，2 个实用函数
+- **用户体验**：Emoji 丰富输出、中文本地化、更清晰的进度指示
+- **性能提升**：并发下载、智能缓存、减少网络开销
+- **文档完善**：8 个新指南、完整变更日志、统一二进制管理
+
+---
+
 ## ✨ 核心特性
 
 ### 🎵 音频格式支持
@@ -310,20 +341,45 @@ chunk_downloadthreads: 30  # 并行分片下载数
 - [README.md](./README.md) - English documentation
 - [QUICKSTART_CACHE.md](./QUICKSTART_CACHE.md) - 缓存机制快速开始
 - [CACHE_UPDATE.md](./CACHE_UPDATE.md) - 缓存更新指南
+- [GOO_ALIAS.md](./GOO_ALIAS.md) - 命令别名配置指南
+- [EMOJI_DEMO.md](./EMOJI_DEMO.md) - Emoji 输出演示
 
 ### 技术文档
+- [CHANGELOG.md](./CHANGELOG.md) - 完整版本历史和变更记录
 - [CACHE_MECHANISM.md](./CACHE_MECHANISM.md) - 完整缓存技术文档
-- [VERSION_SUMMARY.md](./VERSION_SUMMARY.md) - 版本历史与功能
+- [MV_QUALITY_DISPLAY.md](./MV_QUALITY_DISPLAY.md) - MV 质量检测功能
+- [MV_PROGRESS_FIX.md](./MV_PROGRESS_FIX.md) - MV 进度追踪改进
+- [MV_LOG_FIX.md](./MV_LOG_FIX.md) - MV 下载日志增强
 
 ---
 
-## 🙏 致谢
+## 🙏 致谢与鸣谢
 
-- **Sorrow** - 原始脚本作者
-- **chocomint** - 创建了 `agent-arm64.js`
+### 🎖️ 原作者与核心贡献者
+- **Sorrow** - 原始脚本作者和架构设计
+- **chocomint** - 创建了 `agent-arm64.js` ARM 支持
 - **zhaarey** - [wrapper](https://github.com/zhaarey/wrapper) 解密服务
 - **Sendy McSenderson** - 流解密代码
-- 所有贡献者和测试者
+
+### 🔧 上游依赖与工具
+- **[mp4ff](https://github.com/Eyevinn/mp4ff)** by Eyevinn - MP4 文件处理
+- **[mp4ff (fork)](https://github.com/itouakirai/mp4ff)** by itouakirai - 增强 MP4 支持
+- **[progressbar/v3](https://github.com/schollz/progressbar)** by schollz - 进度显示
+- **[requests](https://github.com/sky8282/requests)** by sky8282 - HTTP 客户端封装
+- **[m3u8](https://github.com/grafov/m3u8)** by grafov - M3U8 播放列表解析
+- **[pflag](https://github.com/spf13/pflag)** by spf13 - 命令行参数
+- **[tablewriter](https://github.com/olekukonko/tablewriter)** by olekukonko - 表格格式化
+- **[color](https://github.com/fatih/color)** by fatih - 彩色终端输出
+
+### 🛠️ 外部工具
+- **[FFmpeg](https://ffmpeg.org/)** - 音视频处理
+- **[MP4Box](https://gpac.io/)** - GPAC 多媒体框架
+- **[mp4decrypt](https://www.bento4.com/)** - Bento4 解密工具
+
+### 💝 特别感谢
+- 所有帮助改进本项目的贡献者和测试者
+- Apple Music API 研究者和逆向工程社区
+- 提供各种库和工具的开源社区
 
 ---
 
@@ -348,6 +404,6 @@ chunk_downloadthreads: 30  # 并行分片下载数
 
 ---
 
-**版本：** v2.2.0  
+**版本：** v2.3.0  
 **最后更新：** 2025-10-09  
 **需要 Go 版本：** 1.23.1+

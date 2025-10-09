@@ -8,6 +8,37 @@ Original script by Sorrow. Enhanced with numerous improvements and optimizations
 
 ---
 
+## 🎉 What's New (v2.1.0 - v2.3.0)
+
+### 📊 Recent Major Updates
+
+#### v2.3.0 - MV Download Enhancement (2025-10-09)
+- **🎬 MV Quality Display** - Automatic detection and display of video quality (4K/1080P/720P/480P)
+- **📈 True Progress Tracking** - Fixed MV download progress to show actual total size instead of segment size
+- **🎨 UI Optimization** - Streamlined progress bars with clear video/audio stream labels
+- **Technical**: Concurrent HEAD requests for size calculation, custom progress descriptions
+
+#### v2.2.0 - UI & Logging Governance (2025-10-09)
+- **🌏 Chinese Help Menu** - Complete localization of `--help` parameter descriptions
+- **✨ Emoji Enhancement** - Beautiful terminal output with contextual emoji icons
+- **🔧 Thread-Safe Logging** - OutputMutex + SafePrintf for clean concurrent logs
+- **📝 Documentation Overhaul** - Consolidated and organized all project documentation
+
+#### v2.1.0 - Performance & UX Improvements (2025-10-09)
+- **⚡ Cache Transfer Mechanism** - 50-70% faster downloads for NFS/network storage
+- **🔍 Interactive File Check** - Smart prompts for existing files with skip options
+- **📊 Smart Status Messages** - Distinguished between cache transfer and local verification
+- **🎯 Quality Tag Standardization** - Emby-compatible MV paths and unified quality tags
+- **🐛 Critical Fixes** - FFmpeg path detection, cache skip logic, file checking improvements
+
+### 📈 Improvements Summary
+- **Code Quality**: +150 lines of optimized code, 2 new utility functions
+- **User Experience**: Emoji-rich output, Chinese localization, clearer progress indicators
+- **Performance**: Concurrent downloads, intelligent caching, reduced network overhead
+- **Documentation**: 8 new guides, comprehensive changelog, unified binary management
+
+---
+
 ## ✨ Features
 
 ### 🎵 Audio Quality Support
@@ -310,20 +341,45 @@ chunk_downloadthreads: 30  # Parallel chunk downloads
 - [README-CN.md](./README-CN.md) - 中文文档
 - [QUICKSTART_CACHE.md](./QUICKSTART_CACHE.md) - Cache mechanism quick start
 - [CACHE_UPDATE.md](./CACHE_UPDATE.md) - Cache update guide
+- [GOO_ALIAS.md](./GOO_ALIAS.md) - Command alias configuration guide
+- [EMOJI_DEMO.md](./EMOJI_DEMO.md) - Emoji output demonstration
 
 ### Technical Documentation
+- [CHANGELOG.md](./CHANGELOG.md) - Complete version history and changes
 - [CACHE_MECHANISM.md](./CACHE_MECHANISM.md) - Complete cache technical docs
-- [VERSION_SUMMARY.md](./VERSION_SUMMARY.md) - Version history & features
+- [MV_QUALITY_DISPLAY.md](./MV_QUALITY_DISPLAY.md) - MV quality detection feature
+- [MV_PROGRESS_FIX.md](./MV_PROGRESS_FIX.md) - MV progress tracking improvements
+- [MV_LOG_FIX.md](./MV_LOG_FIX.md) - MV download logging enhancements
 
 ---
 
-## 🙏 Credits
+## 🙏 Credits & Acknowledgments
 
-- **Sorrow** - Original script author
-- **chocomint** - Created `agent-arm64.js`
+### 🎖️ Original Authors & Core Contributors
+- **Sorrow** - Original script author and architecture
+- **chocomint** - Created `agent-arm64.js` for ARM support
 - **zhaarey** - [wrapper](https://github.com/zhaarey/wrapper) decryption service
 - **Sendy McSenderson** - Stream decryption code
-- All contributors and testers
+
+### 🔧 Upstream Dependencies & Tools
+- **[mp4ff](https://github.com/Eyevinn/mp4ff)** by Eyevinn - MP4 file manipulation
+- **[mp4ff (fork)](https://github.com/itouakirai/mp4ff)** by itouakirai - Enhanced MP4 support
+- **[progressbar/v3](https://github.com/schollz/progressbar)** by schollz - Progress display
+- **[requests](https://github.com/sky8282/requests)** by sky8282 - HTTP client wrapper
+- **[m3u8](https://github.com/grafov/m3u8)** by grafov - M3U8 playlist parser
+- **[pflag](https://github.com/spf13/pflag)** by spf13 - Command-line flags
+- **[tablewriter](https://github.com/olekukonko/tablewriter)** by olekukonko - Table formatting
+- **[color](https://github.com/fatih/color)** by fatih - Colorful terminal output
+
+### 🛠️ External Tools
+- **[FFmpeg](https://ffmpeg.org/)** - Audio/video processing
+- **[MP4Box](https://gpac.io/)** - GPAC multimedia framework
+- **[mp4decrypt](https://www.bento4.com/)** - Bento4 decryption tools
+
+### 💝 Special Thanks
+- All contributors and testers who helped improve this project
+- Apple Music API researchers and reverse engineering community
+- Open source community for various libraries and tools
 
 ---
 
@@ -348,6 +404,6 @@ This project is for personal use only. All rights to the downloaded content belo
 
 ---
 
-**Version:** v2.2.0  
+**Version:** v2.3.0  
 **Last Updated:** 2025-10-09  
 **Go Version Required:** 1.23.1+
