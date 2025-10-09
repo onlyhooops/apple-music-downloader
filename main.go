@@ -319,7 +319,7 @@ func main() {
 		runDownloads(args, false)
 	}
 
-	fmt.Printf("已完成: %d/%d | 警告: %d | 错误: %d", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	fmt.Printf("\n『已完成: %d/%d | 警告: %d | 错误: %d』\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
 	if core.Counter.Error > 0 {
 		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}
