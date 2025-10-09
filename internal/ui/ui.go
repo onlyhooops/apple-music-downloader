@@ -17,6 +17,35 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
+// UI暂停/恢复控制通道
+var (
+	suspendChan = make(chan struct{}, 1)
+	resumeChan  = make(chan struct{}, 1)
+	isSuspended = false
+)
+
+// Suspend 暂停UI更新（用于需要直接输出或交互的场景）
+func Suspend() {
+	select {
+	case suspendChan <- struct{}{}:
+		isSuspended = true
+	default:
+		// 已经在暂停状态，忽略
+	}
+}
+
+// Resume 恢复UI更新
+func Resume() {
+	if isSuspended {
+		select {
+		case resumeChan <- struct{}{}:
+			isSuspended = false
+		default:
+			// 已经在运行状态，忽略
+		}
+	}
+}
+
 func RenderUI(done <-chan struct{}) {
 	ticker := time.NewTicker(300 * time.Millisecond)
 	defer ticker.Stop()
@@ -30,6 +59,9 @@ func RenderUI(done <-chan struct{}) {
 		select {
 		case <-done:
 			return
+		case <-suspendChan:
+			// UI暂停，等待恢复信号
+			<-resumeChan
 		case <-ticker.C:
 			PrintUI()
 		}

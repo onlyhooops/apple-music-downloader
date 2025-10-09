@@ -126,7 +126,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if totalTasks > 1 {
-		fmt.Printf("[%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
+		core.SafePrintf("[%d/%d] 开始处理: %s\n", currentTask, totalTasks, urlRaw)
 	}
 
 	var storefront, albumId string
@@ -170,10 +170,10 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	var urlArg_i = parse.Query().Get("i")
 	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
 	if err != nil {
-		fmt.Printf("专辑下载失败: %s -> %v\n", urlRaw, err)
+		core.SafePrintf("专辑下载失败: %s -> %v\n", urlRaw, err)
 	} else {
 		if totalTasks > 1 {
-			fmt.Printf("[%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
+			core.SafePrintf("[%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
 		}
 	}
 }
@@ -183,11 +183,11 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 	for _, urlRaw := range initialUrls {
 		if strings.Contains(urlRaw, "/artist/") {
-			fmt.Printf("正在解析歌手页面: %s\n", urlRaw)
+			core.SafePrintf("正在解析歌手页面: %s\n", urlRaw)
 			artistAccount := &core.Config.Accounts[0]
 			urlArtistName, urlArtistID, err := api.GetUrlArtistName(urlRaw, artistAccount)
 			if err != nil {
-				fmt.Printf("获取歌手名称失败 for %s: %v\n", urlRaw, err)
+				core.SafePrintf("获取歌手名称失败 for %s: %v\n", urlRaw, err)
 				continue
 			}
 
@@ -198,18 +198,18 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 			albumArgs, err := api.CheckArtist(urlRaw, artistAccount, "albums")
 			if err != nil {
-				fmt.Printf("获取歌手专辑失败 for %s: %v\n", urlRaw, err)
+				core.SafePrintf("获取歌手专辑失败 for %s: %v\n", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, albumArgs...)
-				fmt.Printf("从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
+				core.SafePrintf("从歌手 %s 页面添加了 %d 张专辑到队列。\n", urlArtistName, len(albumArgs))
 			}
 
 			mvArgs, err := api.CheckArtist(urlRaw, artistAccount, "music-videos")
 			if err != nil {
-				fmt.Printf("获取歌手MV失败 for %s: %v\n", urlRaw, err)
+				core.SafePrintf("获取歌手MV失败 for %s: %v\n", urlRaw, err)
 			} else {
 				finalUrls = append(finalUrls, mvArgs...)
-				fmt.Printf("从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
+				core.SafePrintf("从歌手 %s 页面添加了 %d 个MV到队列。\n", urlArtistName, len(mvArgs))
 			}
 		} else {
 			finalUrls = append(finalUrls, urlRaw)
@@ -230,7 +230,7 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)
 
-	fmt.Printf("--- 开始下载任务 ---\n总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
+	core.SafePrintf("--- 开始下载任务 ---\n总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
 
 	for i, urlToProcess := range finalUrls {
 		wg.Add(1)

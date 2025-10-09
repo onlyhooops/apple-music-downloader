@@ -594,8 +594,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	finalAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
 	os.MkdirAll(finalAlbumFolder, os.ModePerm)
 
-	fmt.Printf("歌手: %s\n", meta.Data[0].Attributes.ArtistName)
-	fmt.Printf("专辑: %s\n", meta.Data[0].Attributes.Name)
+	core.SafePrintf("歌手: %s\n", meta.Data[0].Attributes.ArtistName)
+	core.SafePrintf("专辑: %s\n", meta.Data[0].Attributes.Name)
 
 	if core.Config.SaveArtistCover && !(strings.Contains(albumId, "pl.")) {
 		if len(meta.Data[0].Relationships.Artists.Data) > 0 {
@@ -632,9 +632,16 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		}
 	}
 
+	// SelectTracks可能涉及交互式输入，暂停UI
+	if !core.DisableDynamicUI && core.Dl_select {
+		ui.Suspend()
+	}
 	selected := ui.SelectTracks(meta, storefront, urlArg_i)
+	if !core.DisableDynamicUI && core.Dl_select {
+		ui.Resume()
+	}
 
-	fmt.Println("正在进行版权预检，请稍候...")
+	core.SafePrintln("正在进行版权预检，请稍候...")
 	var workingAccounts []structs.Account
 	if len(meta.Data[0].Relationships.Tracks.Data) > 0 {
 		firstTrackId := meta.Data[0].Relationships.Tracks.Data[0].ID
@@ -643,7 +650,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			if err == nil {
 				workingAccounts = append(workingAccounts, acc)
 			} else {
-				fmt.Printf("账户 [%s] 无法访问此专辑 (可能无版权)，本次任务将跳过该账户。\n", acc.Name)
+				core.SafePrintf("账户 [%s] 无法访问此专辑 (可能无版权)，本次任务将跳过该账户。\n", acc.Name)
 			}
 		}
 	} else {
@@ -712,14 +719,14 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	yellow := color.New(color.FgYellow).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Printf("%s %s | %s | %s | %s\n",
+	core.SafePrintf("%s %s | %s | %s | %s\n",
 		green("音源:"),
 		green(albumQualityString),
 		green(fmt.Sprintf("%d 线程", numThreads)),
 		yellow(regionsStr),
 		green(fmt.Sprintf("%d 个账户并行下载", len(workingAccounts))),
 	)
-	fmt.Println(strings.Repeat("-", 50))
+	core.SafePrintln(strings.Repeat("-", 50))
 
 	core.RipLock.Lock()
 	defer core.RipLock.Unlock()
@@ -794,17 +801,27 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	// 如果所有文件都已存在，询问用户是否要进行校验
 	if allFilesExist && len(selected) > 0 {
+		// 暂停UI以便进行交互式输入
+		if !core.DisableDynamicUI {
+			ui.Suspend()
+		}
+
 		cyan := color.New(color.FgCyan).SprintFunc()
 		yellow := color.New(color.FgYellow).SprintFunc()
-		fmt.Printf("\n%s\n", cyan("检测到所有文件都已存在于目标位置。"))
-		fmt.Printf("%s", yellow("是否进行本地文件校验？(y/N): "))
+		core.SafePrintf("\n%s\n", cyan("检测到所有文件都已存在于目标位置。"))
+		core.SafePrintf("%s", yellow("是否进行本地文件校验？(y/N): "))
 
 		reader := bufio.NewReader(os.Stdin)
 		response, _ := reader.ReadString('\n')
 		response = strings.TrimSpace(strings.ToLower(response))
 
+		// 恢复UI
+		if !core.DisableDynamicUI {
+			ui.Resume()
+		}
+
 		if response != "y" && response != "yes" {
-			fmt.Println(color.New(color.FgGreen).SprintFunc()("跳过校验，任务完成！"))
+			core.SafePrintln(color.New(color.FgGreen).SprintFunc()("跳过校验，任务完成！"))
 			// 标记所有文件为已完成
 			for _, trackNum := range selected {
 				core.OkDict[albumId] = append(core.OkDict[albumId], trackNum)
@@ -844,7 +861,10 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	}
 
 	doneUI := make(chan struct{})
-	go ui.RenderUI(doneUI)
+	// 只有在未禁用动态UI时才启动UI渲染
+	if !core.DisableDynamicUI {
+		go ui.RenderUI(doneUI)
+	}
 
 	var wg sync.WaitGroup
 	semaphore := make(chan struct{}, numThreads)
