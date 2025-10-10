@@ -551,7 +551,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	var lyricAccount *structs.Account
 	for i := range core.Config.Accounts {
 		acc := &core.Config.Accounts[i]
-		if strings.ToLower(acc.Storefront) == strings.ToLower(storefront) {
+		if strings.EqualFold(acc.Storefront, storefront) {
 			lyricAccount = acc
 			break
 		}
@@ -560,7 +560,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	if lyricAccount == nil && core.Config.DefaultLyricStorefront != "" {
 		for i := range core.Config.Accounts {
 			acc := &core.Config.Accounts[i]
-			if strings.ToLower(acc.Storefront) == strings.ToLower(core.Config.DefaultLyricStorefront) {
+			if strings.EqualFold(acc.Storefront, core.Config.DefaultLyricStorefront) {
 				lyricAccount = acc
 				break
 			}

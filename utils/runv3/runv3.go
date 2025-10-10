@@ -32,6 +32,14 @@ import (
 	"github.com/schollz/progressbar/v3"
 )
 
+// 自定义 context key 类型，避免使用内置字符串类型
+type contextKey string
+
+const (
+	psshContextKey   contextKey = "pssh"
+	adamIdContextKey contextKey = "adamId"
+)
+
 type PlaybackLicense struct {
 	ErrorCode  int    `json:"errorCode"`
 	License    string `json:"license"`
@@ -263,8 +271,8 @@ func Run(adamId string, trackpath string, authtoken string, mutoken string, mvmo
 		}
 	}
 	ctx := context.Background()
-	ctx = context.WithValue(ctx, "pssh", kidBase64)
-	ctx = context.WithValue(ctx, "adamId", adamId)
+	ctx = context.WithValue(ctx, psshContextKey, kidBase64)
+	ctx = context.WithValue(ctx, adamIdContextKey, adamId)
 	pssh, err := getPSSH("", kidBase64)
 	//fmt.Println(pssh)
 	if err != nil {
@@ -275,7 +283,7 @@ func Run(adamId string, trackpath string, authtoken string, mutoken string, mvmo
 		"authorization":            "Bearer " + authtoken,
 		"x-apple-music-user-token": mutoken,
 	}
-	client, _ := requests.NewClient(nil, requests.ClientOption{
+	client, _ := requests.NewClient(context.TODO(), requests.ClientOption{
 		Headers: headers,
 	})
 	key := key.Key{

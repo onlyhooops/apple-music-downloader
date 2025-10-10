@@ -205,7 +205,7 @@ func GetAccountForStorefront(storefront string) (*structs.Account, error) {
 
 	for i := range Config.Accounts {
 		acc := &Config.Accounts[i]
-		if strings.ToLower(acc.Storefront) == strings.ToLower(storefront) {
+		if strings.EqualFold(acc.Storefront, storefront) {
 			return acc, nil
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
+	
 	"github.com/sky8282/requests"
 	"log/slog"
 	"main/utils/runv3/cdm"
@@ -41,7 +43,7 @@ func (w *Key) GetKey(ctx context.Context, licenseServerURL string, PSSH string, 
 			Data: licenseRequest,
 		})
 	} else {
-		response, err = w.ReqCli.Request(nil, "post", licenseServerURL, requests.RequestOption{
+		response, err = w.ReqCli.Request(context.TODO(), "post", licenseServerURL, requests.RequestOption{
 			Data: licenseRequest,
 		})
 	}
@@ -59,7 +61,10 @@ func (w *Key) GetKey(ctx context.Context, licenseServerURL string, PSSH string, 
 	} else {
 		licenseResponse = response.Content()
 	}
-	keys, err := cdm.GetLicenseKeys(licenseRequest, licenseResponse)
+	keys, keysErr := cdm.GetLicenseKeys(licenseRequest, licenseResponse)
+	if keysErr != nil {
+		return "", keybt, fmt.Errorf("failed to get license keys: %w", keysErr)
+	}
 	command := ""
 
 	for _, key := range keys {
