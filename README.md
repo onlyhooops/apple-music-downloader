@@ -2,6 +2,13 @@
 
 [English](#) / [简体中文](./README-CN.md)
 
+> [!WARNING]
+> **⚠️ Experimental Branch Warning**
+> 
+> This is a personal experimental branch with extensive modifications. It contains numerous unknown bugs and risks. Use at your own risk!
+> 
+> This branch includes experimental features that have not been fully tested and may cause data loss, download failures, or other unforeseen issues. For production use, please use the official stable release.
+
 **A powerful Apple Music downloader supporting high-quality audio formats including ALAC, Dolby Atmos, Hi-Res Lossless, and Music Videos.**
 
 Original script by Sorrow. Enhanced with numerous improvements and optimizations.
