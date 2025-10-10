@@ -996,31 +996,31 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 						}
 					}
 
-				// Check if any post-download step failed
-				if postDownloadError != nil {
-					os.Remove(trackPath) // Delete the problematic file
-					
-					// 截断过长的错误信息，避免换行刷屏
-					errorMsg := postDownloadError.Error()
-					if len(errorMsg) > 50 {
-						errorMsg = errorMsg[:47] + "..."
+					// Check if any post-download step failed
+					if postDownloadError != nil {
+						os.Remove(trackPath) // Delete the problematic file
+
+						// 截断过长的错误信息，避免换行刷屏
+						errorMsg := postDownloadError.Error()
+						if len(errorMsg) > 50 {
+							errorMsg = errorMsg[:47] + "..."
+						}
+
+						if attempt < PostDownloadMaxRetries {
+							// 显示重试信息（原地更新，不刷屏）
+							ui.UpdateStatus(statusIndex, fmt.Sprintf("重试 %d/%d: %s", attempt, PostDownloadMaxRetries, errorMsg), yellow)
+							time.Sleep(1500 * time.Millisecond) // 缩短等待时间
+							continue                            // Go to the next retry attempt
+						} else {
+							// 所有重试失败，跳过该曲目（不计入错误计数）
+							ui.UpdateStatus(statusIndex, "已跳过 (标签失败)", color.New(color.FgYellow).SprintFunc())
+							core.SharedLock.Lock()
+							core.Counter.Total++
+							// 不增加 Error 计数，视为跳过而非错误
+							core.SharedLock.Unlock()
+							return
+						}
 					}
-					
-					if attempt < PostDownloadMaxRetries {
-						// 显示重试信息（原地更新，不刷屏）
-						ui.UpdateStatus(statusIndex, fmt.Sprintf("重试 %d/%d: %s", attempt, PostDownloadMaxRetries, errorMsg), yellow)
-						time.Sleep(1500 * time.Millisecond) // 缩短等待时间
-						continue // Go to the next retry attempt
-					} else {
-						// 所有重试失败，跳过该曲目（不计入错误计数）
-						ui.UpdateStatus(statusIndex, "已跳过 (标签失败)", color.New(color.FgYellow).SprintFunc())
-						core.SharedLock.Lock()
-						core.Counter.Total++
-						// 不增加 Error 计数，视为跳过而非错误
-						core.SharedLock.Unlock()
-						return
-					}
-				}
 
 					// All steps successful
 					core.SharedLock.Lock()
@@ -1042,31 +1042,24 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		time.Sleep(200 * time.Millisecond)
 		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
 
-		// 如果使用了缓存，批次完成后立即转移文件
-		if usingCache && batch.TotalBatches > 1 {
-			// 检查缓存目录中是否有新文件需要转移
-			var cacheSingerFolder string
-			if finalArtistDir != "" {
-				cacheSingerFolder = filepath.Join(baseSaveFolder, finalArtistDir)
-			} else {
-				cacheSingerFolder = baseSaveFolder
-			}
-			cacheAlbumFolder := filepath.Join(cacheSingerFolder, finalAlbumDir)
+		// 如果使用了缓存，批次完成后立即转移文件（多批次且不是最后一批）
+		if usingCache && batch.TotalBatches > 1 && !batch.IsLast {
+			// 检查缓存hash目录中是否有新文件需要转移
+			cacheHashDir := baseSaveFolder
 
-			// 检查缓存专辑目录是否存在且有内容
-			hasNewFiles := false
-			if info, err := os.Stat(cacheAlbumFolder); err == nil && info.IsDir() {
-				// 检查目录是否有文件
-				entries, _ := os.ReadDir(cacheAlbumFolder)
-				for _, entry := range entries {
-					if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".m4a") {
-						hasNewFiles = true
-						break
-					}
+			hasFilesToMove := false
+			filepath.Walk(cacheHashDir, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return nil
 				}
-			}
+				if !info.IsDir() && strings.HasSuffix(path, ".m4a") {
+					hasFilesToMove = true
+					return filepath.SkipDir
+				}
+				return nil
+			})
 
-			if hasNewFiles {
+			if hasFilesToMove {
 				// 有新文件，需要转移
 				if !core.DisableDynamicUI {
 					ui.Suspend()
@@ -1074,25 +1067,31 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				cyan := color.New(color.FgCyan).SprintFunc()
 				core.SafePrintf("\n%s\n", cyan(fmt.Sprintf("📤 批次 %d/%d: 正在转移文件到目标位置...", batch.BatchNum, batch.TotalBatches)))
 
-				// 构建最终目标路径
-				var targetSingerFolder string
-				if finalArtistDir != "" {
-					targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
-				} else {
-					targetSingerFolder = finalSaveFolder
-				}
-				targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
-
-				// 移动专辑文件夹
-				if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
-					fmt.Printf("从缓存移动文件失败: %v\n", err)
-					if !core.DisableDynamicUI {
-						ui.Resume()
+				// 递归转移所有文件
+				moveCount := 0
+				filepath.Walk(cacheHashDir, func(cachePath string, info os.FileInfo, walkErr error) error {
+					if walkErr != nil || cachePath == cacheHashDir {
+						return nil
 					}
-					return fmt.Errorf("从缓存移动文件失败: %w", err)
-				}
 
-				core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 文件转移完成", batch.BatchNum, batch.TotalBatches)))
+					relPath, err := filepath.Rel(cacheHashDir, cachePath)
+					if err != nil {
+						return nil
+					}
+
+					targetPath := filepath.Join(finalSaveFolder, relPath)
+
+					if info.IsDir() {
+						os.MkdirAll(targetPath, info.Mode())
+					} else if strings.HasSuffix(cachePath, ".m4a") || strings.HasSuffix(cachePath, ".jpg") {
+						if err := utils.SafeMoveFile(cachePath, targetPath); err == nil {
+							moveCount++
+						}
+					}
+					return nil
+				})
+
+				core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 已转移 %d 个文件", batch.BatchNum, batch.TotalBatches, moveCount)))
 				if !core.DisableDynamicUI {
 					ui.Resume()
 				}
@@ -1115,59 +1114,73 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	fmt.Println(strings.Repeat("-", 50))
 
-	// 如果使用了缓存，检查是否有新文件需要转移
+	// 如果使用了缓存，转移所有缓存文件到目标位置
 	if usingCache {
-		// 检查缓存目录中是否有文件（即是否有新下载的文件）
-		var finalSingerFolder string
-		if finalArtistDir != "" {
-			finalSingerFolder = filepath.Join(baseSaveFolder, finalArtistDir)
-		} else {
-			finalSingerFolder = baseSaveFolder
-		}
-		cacheAlbumFolder := filepath.Join(finalSingerFolder, finalAlbumDir)
+		// 递归扫描整个缓存hash目录，查找所有需要转移的文件
+		cacheHashDir := baseSaveFolder // 缓存的hash子目录，如: Cache/07b01b1d847fa876
 
-		// 检查缓存专辑目录是否存在且有内容
-		hasNewFiles := false
-		if info, err := os.Stat(cacheAlbumFolder); err == nil && info.IsDir() {
-			// 检查目录是否有文件
-			entries, _ := os.ReadDir(cacheAlbumFolder)
-			for _, entry := range entries {
-				if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".m4a") {
-					hasNewFiles = true
-					break
-				}
+		hasFilesToMove := false
+		err := filepath.Walk(cacheHashDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil // 忽略错误，继续扫描
 			}
-		}
+			if !info.IsDir() && (strings.HasSuffix(path, ".m4a") || strings.HasSuffix(path, ".jpg")) {
+				hasFilesToMove = true
+				return filepath.SkipDir // 找到文件即可，无需继续扫描
+			}
+			return nil
+		})
 
-		if hasNewFiles {
-			// 有新文件，需要转移
+		if err == nil && hasFilesToMove {
+			// 有文件需要转移
 			cyan := color.New(color.FgCyan).SprintFunc()
 			fmt.Printf("\n%s\n", cyan("📤 正在从缓存转移文件到目标位置..."))
 
-			// 构建最终目标路径
-			var targetSingerFolder string
-			if finalArtistDir != "" {
-				targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
+			// 递归转移所有子目录
+			moveErr := filepath.Walk(cacheHashDir, func(cachePath string, info os.FileInfo, walkErr error) error {
+				if walkErr != nil {
+					return nil
+				}
+
+				// 跳过根目录本身
+				if cachePath == cacheHashDir {
+					return nil
+				}
+
+				// 计算相对路径
+				relPath, err := filepath.Rel(cacheHashDir, cachePath)
+				if err != nil {
+					return nil
+				}
+
+				// 构建目标路径
+				targetPath := filepath.Join(finalSaveFolder, relPath)
+
+				if info.IsDir() {
+					// 创建目标目录
+					return os.MkdirAll(targetPath, info.Mode())
+				}
+
+				// 转移文件
+				if err := utils.SafeMoveFile(cachePath, targetPath); err != nil {
+					fmt.Printf("警告: 转移文件失败 %s: %v\n", relPath, err)
+				}
+				return nil
+			})
+
+			if moveErr != nil {
+				fmt.Printf("警告: 转移文件过程出现错误: %v\n", moveErr)
 			} else {
-				targetSingerFolder = finalSaveFolder
+				fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("📥 文件转移完成！"))
 			}
-			targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
-
-			// 移动专辑文件夹
-			if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
-				fmt.Printf("从缓存移动文件失败: %v\n", err)
-				return fmt.Errorf("从缓存移动文件失败: %w", err)
-			}
-
-			fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("📥 文件转移完成！"))
 		} else {
 			// 所有文件都已存在，只是校验
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("\n%s\n", green("📥 已完成本地文件校验 任务完成！"))
+			fmt.Printf("\n%s\n", green("📥 本地文件校验完成！"))
 		}
 
-		// 清理缓存目录
-		if err := utils.CleanupCacheDirectory(baseSaveFolder); err != nil {
+		// 清理缓存hash目录（无论成功失败都清理）
+		if err := utils.CleanupCacheDirectory(cacheHashDir); err != nil {
 			fmt.Printf("清理缓存目录警告: %v\n", err)
 		}
 	}
