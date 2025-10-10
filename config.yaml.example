@@ -13,93 +13,93 @@
 
 # ========== 账号配置 ==========
 accounts:
-  - name: "CN"
-    storefront: "cn"
-    media-user-token: "your-media-user-token-here"
-    authorization-token: "your-authorization-token"
-    decrypt-m3u8-port: "127.0.0.1:10020"
-    get-m3u8-port: "127.0.0.1:10021"
+  - name: "CN"                                          # 账号名称，方便识别
+    storefront: "cn"                                    # 账号所属区域（必须小写，如 cn, us, jp, hk）
+    media-user-token: "your-media-user-token-here"      # 替换为你的真实 token
+    authorization-token: "your-authorization-token"     # 授权令牌（可选，留空时程序自动获取）
+    decrypt-m3u8-port: "127.0.0.1:10020"                # 解密服务端口
+    get-m3u8-port: "127.0.0.1:10021"                    # M3U8获取服务端口
 
 # ========== 路径配置 ==========
-alac-save-folder: "/media/Music/AppleMusic/Alac"
-atmos-save-folder: "/media/Music/AppleMusic/Atmos"
-mv-save-folder: "/media/Music/AppleMusic/MusicVideos"
+alac-save-folder: "/media/Music/AppleMusic/Alac"        # ALAC 无损音频保存路径
+atmos-save-folder: "/media/Music/AppleMusic/Atmos"      # Dolby Atmos 音频保存路径
+mv-save-folder: "/media/Music/AppleMusic/MusicVideos"   # MV 视频保存路径
 
 # ========== 缓存配置 ==========
-enable-cache: false
-cache-folder: "./Cache"
+enable-cache: false                                     # 是否启用缓存机制（适用于网络文件系统）
+cache-folder: "./Cache"                                 # 缓存文件夹路径（支持相对或绝对路径）
 
 # ========== 下载性能配置 ==========
 # M3U8 切片
-chunk_downloadthreads: 30
-mv_chunk_downloadthreads: 30
+chunk_downloadthreads: 30                               # M3U8 切片并行下载线程数
+mv_chunk_downloadthreads: 30                            # MV 视频切片并行下载线程数
 
 # 网络缓冲
-NetworkReadBufferKB: 4096
-BufferSizeKB: 4
+NetworkReadBufferKB: 4096                               # 网络读取缓冲区大小（KB）
+BufferSizeKB: 4                                         # I/O 缓冲区大小（KB），过大会导致内存占用过高
 
 # 音频下载线程
-aac_downloadthreads: 5
-lossless_downloadthreads: 5
-hires_downloadthreads: 5
+aac_downloadthreads: 5                                  # AAC 格式下载线程数
+lossless_downloadthreads: 5                             # 无损格式下载线程数
+hires_downloadthreads: 5                                # Hi-Res 高解析度下载线程数
 
 # MV 下载
-mv_downloadthreads: 3
+mv_downloadthreads: 3                                   # MV 视频文件并行下载线程数
 
 # 批量下载
-batch-size: 20                    # 每批处理的曲目数量，0=不分批
-skip-existing-validation: false   # 自动跳过已存在文件的校验
+batch-size: 20                                          # 每批处理的曲目数量（0 表示不分批）
+skip-existing-validation: false                         # 是否自动跳过已存在文件的校验
 
 # ========== FFmpeg 配置 ==========
-ffmpeg-fix: true
-ffmpeg-check-args: "-map 0:a:0 -f wav -hide_banner -loglevel error -"
-ffmpeg-encode-args: "-c:v copy -c:a alac -avoid_negative_ts make_zero -f mp4 -y"
+ffmpeg-fix: true                                        # 是否在下载完成后检测并修复编码问题
+ffmpeg-check-args: "-map 0:a:0 -f wav -hide_banner -loglevel error -"      # FFmpeg 检测参数
+ffmpeg-encode-args: "-c:v copy -c:a alac -avoid_negative_ts make_zero -f mp4 -y"  # FFmpeg 重编码参数
 
 # ========== 语言配置 ==========
-language: ""
+language: ""                                            # 语言代码（如 "zh-CN", "en-US"），留空则自动检测
 
 # ========== 歌词配置 ==========
-default-lyric-storefront: "cn"
-lrc-type: "lyrics"              # lyrics 或 syllable-lyrics
-lrc-format: "lrc"               # lrc 或 ttml
-embed-lrc: true
-save-lrc-file: false
+default-lyric-storefront: "cn"                          # 默认歌词区域
+lrc-type: "lyrics"                                      # 歌词类型（lyrics: 普通歌词, syllable-lyrics: 逐字歌词）
+lrc-format: "lrc"                                       # 歌词格式（lrc 或 ttml）
+embed-lrc: true                                         # 是否将歌词嵌入音频文件
+save-lrc-file: false                                    # 是否将歌词另存为 .lrc 文件
 
 # ========== 封面配置 ==========
-embed-cover: true
-cover-size: "5000x5000"
-cover-format: "jpg"
-save-artist-cover: true
-save-animated-artwork: true
-emby-animated-artwork: true
+embed-cover: true                                       # 是否嵌入封面到音频文件
+cover-size: "5000x5000"                                 # 封面尺寸
+cover-format: "jpg"                                     # 封面格式（jpg, png, original）
+save-artist-cover: true                                 # 是否保存歌手头像
+save-animated-artwork: true                             # 是否保存动画插图（需要 ffmpeg）
+emby-animated-artwork: true                             # 是否生成 Emby 动画插图（需要 ffmpeg）
 
 # ========== 音频格式配置 ==========
-get-m3u8-from-device: true
-get-m3u8-mode: "hires"          # all 或 hires
-aac-type: "aac-lc"
-alac-max: 192000
-atmos-max: 2768
+get-m3u8-from-device: true                              # 是否从设备获取 M3U8
+get-m3u8-mode: "hires"                                  # M3U8 获取模式（all: 获取所有, hires: 仅探测 Hi-Res）
+aac-type: "aac-lc"                                      # AAC 类型（aac-lc, aac, aac-binaural, aac-downmix）
+alac-max: 192000                                        # ALAC 最大采样率（192000, 96000, 48000, 44100）
+atmos-max: 2768                                         # Atmos 最大码率（2768, 2448）
 
 # ========== MV 配置 ==========
-download-videos: true
-mv-audio-type: "atmos"
-mv-max: 2160
+download-videos: true                                   # 是否下载 MV 视频
+mv-audio-type: "atmos"                                  # MV 音轨偏好（atmos, ac3, aac）
+mv-max: 2160                                            # MV 视频分辨率偏好（如 2160p, 1080p, 720p）
 
 # ========== 路径限制 ==========
-max-path-length: 255
-limit-max: 200
+max-path-length: 255                                    # 绝对路径字符限制（Windows: 255, Linux/macOS: 4096）
+limit-max: 200                                          # 歌手、专辑、曲目名的最大字符数
 
 # ========== 文件命名格式 ==========
-album-folder-format: "{AlbumName} {Tag}"
-playlist-folder-format: "{PlaylistName}"
-song-file-format: "{SongNumer}. {SongName}"
-artist-folder-format: "{UrlArtistName}"
+album-folder-format: "{AlbumName} {Tag}"                # 专辑文件夹命名格式
+playlist-folder-format: "{PlaylistName}"                # 播放列表文件夹命名格式
+song-file-format: "{SongNumer}. {SongName}"             # 歌曲文件命名格式
+artist-folder-format: "{UrlArtistName}"                 # 艺术家文件夹命名格式（留空则不创建）
 
 # ========== 特殊标签 ==========
-explicit-choice: "[E]"
-clean-choice: "[C]"
-apple-master-choice: "[M]"
+explicit-choice: "[E]"                                  # 显式内容标识
+clean-choice: "[C]"                                     # 净化版本标识
+apple-master-choice: "[M]"                              # Apple Digital Master 标识
 
 # ========== 播放列表元数据 ==========
-use-songinfo-for-playlist: false
-dl-albumcover-for-playlist: false
+use-songinfo-for-playlist: false                        # 是否为播放列表使用歌曲信息
+dl-albumcover-for-playlist: false                       # 是否为播放列表下载专辑封面
