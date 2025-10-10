@@ -857,7 +857,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				ui.Suspend()
 			}
 			cyan := color.New(color.FgCyan).SprintFunc()
-			core.SafePrintf("\n%s\n", cyan(fmt.Sprintf("📦 正在处理第 %d/%d 批曲目 (共 %d 首)", batch.BatchNum, batch.TotalBatches, batch.BatchSize)))
+			core.SafePrintf("%s\n", cyan(fmt.Sprintf("📦 正在处理第 %d/%d 批曲目 (共 %d 首)", batch.BatchNum, batch.TotalBatches, batch.BatchSize)))
 			if !core.DisableDynamicUI {
 				ui.Resume()
 			}
@@ -1095,7 +1095,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		}
 		
 		// 显示批次完成信息（多批次时）
-		if batch.TotalBatches > 1 {
+		if batch.TotalBatches > 1 && !batch.IsLast {
 			if !core.DisableDynamicUI {
 				ui.Suspend()
 			}
