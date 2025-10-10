@@ -167,7 +167,15 @@ func FormatQualityTag(tag string) string {
 
 // SafeMoveFile 安全地移动文件从源路径到目标路径
 // 如果是跨文件系统操作，会使用拷贝+删除的方式
+// 如果目标文件已存在，会跳过移动并返回特殊错误
 func SafeMoveFile(src, dst string) error {
+	// 检查目标文件是否已存在
+	targetExists, _ := FileExists(dst)
+	if targetExists {
+		// 目标文件已存在，跳过移动（不覆盖）
+		return fmt.Errorf("目标文件已存在，跳过")
+	}
+
 	// 确保目标目录存在
 	dstDir := filepath.Dir(dst)
 	if err := os.MkdirAll(dstDir, os.ModePerm); err != nil {

@@ -112,13 +112,13 @@ func downloadTrackWithFallback(track structs.TrackData, meta *structs.AutoGenera
 				return trackPath, nil
 			}
 			lastError = err
-			
+
 			// 检测连接被拒绝错误
 			if strings.Contains(err.Error(), "connection refused") {
 				connectionRefusedCount++
 				// 原地刷新显示重试信息
 				updateStatus(statusIndex, fmt.Sprintf("连接失败 %d/%d: 正在重试...", connectionRefusedCount, maxConnectionRefusedRetries), yellow)
-				
+
 				// 超过最大重试次数，直接跳过
 				if connectionRefusedCount >= maxConnectionRefusedRetries {
 					updateStatus(statusIndex, "连接服务失败，已跳过", red)
@@ -132,12 +132,12 @@ func downloadTrackWithFallback(track structs.TrackData, meta *structs.AutoGenera
 				}
 				updateStatus(statusIndex, fmt.Sprintf("重试 %d/%d: %s", attempt+1, maxRetries+1, errorMsg), yellow)
 			}
-			
+
 			if attempt < maxRetries {
 				time.Sleep(1500 * time.Millisecond)
 			}
 		}
-		
+
 		// 单个账户失败，尝试下一个（原地刷新）
 		if i < len(workingAccounts)-1 {
 			updateStatus(statusIndex, fmt.Sprintf("账户 %s 失败，切换中...", account.Name), yellow)
@@ -951,31 +951,31 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 						}
 					}()
 
-				trackPath, err := downloadTrackWithFallback(trackData, meta, albumId, storefront, baseSaveFolder, finalSaveFolder, Codec, covPath, workingAccounts, statusIndex, statusIndex, ui.UpdateStatus, progressChan)
-				close(progressChan)
+					trackPath, err := downloadTrackWithFallback(trackData, meta, albumId, storefront, baseSaveFolder, finalSaveFolder, Codec, covPath, workingAccounts, statusIndex, statusIndex, ui.UpdateStatus, progressChan)
+					close(progressChan)
 
-				if err != nil {
-					// downloadTrackWithFallback has its own retries. If it fails, we consider it a permanent failure for this track.
-					
-					// 截断错误信息，避免换行
-					errorMsg := err.Error()
-					if len(errorMsg) > 50 {
-						errorMsg = errorMsg[:47] + "..."
+					if err != nil {
+						// downloadTrackWithFallback has its own retries. If it fails, we consider it a permanent failure for this track.
+
+						// 截断错误信息，避免换行
+						errorMsg := err.Error()
+						if len(errorMsg) > 50 {
+							errorMsg = errorMsg[:47] + "..."
+						}
+
+						core.SharedLock.Lock()
+						core.Counter.Total++
+						// 检查是否是跳过类型的错误
+						if strings.Contains(err.Error(), "已跳过") {
+							ui.UpdateStatus(statusIndex, errorMsg, yellow)
+							// 跳过不计入错误统计
+						} else {
+							ui.UpdateStatus(statusIndex, fmt.Sprintf("下载失败: %s", errorMsg), red)
+							core.Counter.Error++
+						}
+						core.SharedLock.Unlock()
+						return
 					}
-					
-					core.SharedLock.Lock()
-					core.Counter.Total++
-					// 检查是否是跳过类型的错误
-					if strings.Contains(err.Error(), "已跳过") {
-						ui.UpdateStatus(statusIndex, errorMsg, yellow)
-						// 跳过不计入错误统计
-					} else {
-						ui.UpdateStatus(statusIndex, fmt.Sprintf("下载失败: %s", errorMsg), red)
-						core.Counter.Error++
-					}
-					core.SharedLock.Unlock()
-					return
-				}
 
 					var postDownloadError error
 					wasFixed := false
@@ -1087,29 +1087,40 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 				// 递归转移所有文件
 				moveCount := 0
+				batchSkippedCount := 0
 				filepath.Walk(cacheHashDir, func(cachePath string, info os.FileInfo, walkErr error) error {
 					if walkErr != nil || cachePath == cacheHashDir {
 						return nil
 					}
-
+					
 					relPath, err := filepath.Rel(cacheHashDir, cachePath)
 					if err != nil {
 						return nil
 					}
-
+					
 					targetPath := filepath.Join(finalSaveFolder, relPath)
-
+					
 					if info.IsDir() {
 						os.MkdirAll(targetPath, info.Mode())
 					} else if strings.HasSuffix(cachePath, ".m4a") || strings.HasSuffix(cachePath, ".jpg") {
-						if err := utils.SafeMoveFile(cachePath, targetPath); err == nil {
+						// SafeMoveFile 内部已检查目标文件存在性
+						if err := utils.SafeMoveFile(cachePath, targetPath); err != nil {
+							if strings.Contains(err.Error(), "目标文件已存在") {
+								batchSkippedCount++
+								// 静默跳过
+							}
+						} else {
 							moveCount++
 						}
 					}
 					return nil
 				})
 
-				core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 已转移 %d 个文件", batch.BatchNum, batch.TotalBatches, moveCount)))
+				if batchSkippedCount > 0 {
+					core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 已转移 %d 个，跳过 %d 个", batch.BatchNum, batch.TotalBatches, moveCount, batchSkippedCount)))
+				} else {
+					core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 已转移 %d 个文件", batch.BatchNum, batch.TotalBatches, moveCount)))
+				}
 				if !core.DisableDynamicUI {
 					ui.Resume()
 				}
@@ -1155,6 +1166,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			fmt.Printf("\n%s\n", cyan("📤 正在从缓存转移文件到目标位置..."))
 
 			// 递归转移所有子目录
+			movedCount := 0
+			skippedCount := 0
 			moveErr := filepath.Walk(cacheHashDir, func(cachePath string, info os.FileInfo, walkErr error) error {
 				if walkErr != nil {
 					return nil
@@ -1179,9 +1192,16 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 					return os.MkdirAll(targetPath, info.Mode())
 				}
 
-				// 转移文件
+				// 转移文件（SafeMoveFile 内部已检查目标文件存在性）
 				if err := utils.SafeMoveFile(cachePath, targetPath); err != nil {
-					fmt.Printf("警告: 转移文件失败 %s: %v\n", relPath, err)
+					if strings.Contains(err.Error(), "目标文件已存在") {
+						skippedCount++
+						// 静默跳过，不打印警告
+					} else {
+						fmt.Printf("警告: 转移文件失败 %s: %v\n", relPath, err)
+					}
+				} else {
+					movedCount++
 				}
 				return nil
 			})
@@ -1189,7 +1209,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			if moveErr != nil {
 				fmt.Printf("警告: 转移文件过程出现错误: %v\n", moveErr)
 			} else {
-				fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()("📥 文件转移完成！"))
+				msg := fmt.Sprintf("📥 文件转移完成！（新增 %d 个，跳过 %d 个）", movedCount, skippedCount)
+				fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()(msg))
 			}
 		} else {
 			// 所有文件都已存在，只是校验
@@ -1365,4 +1386,3 @@ func MvDownloader(adamID string, baseSaveDir, artistDir, albumDir string, storef
 	}
 	return mvOutPath, resolution, nil
 }
-
