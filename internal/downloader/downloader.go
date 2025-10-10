@@ -1,7 +1,6 @@
 package downloader
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -799,52 +798,23 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		}
 	}
 
-	// 如果所有文件都已存在，根据配置决定是否要进行校验
+	// 如果所有文件都已存在，直接跳过（避免危险的校验操作可能删除原文件）
 	if allFilesExist && len(selected) > 0 {
-		shouldSkip := core.Config.SkipExistingValidation
-
-		// 如果未配置自动跳过，则询问用户
-		if !shouldSkip {
-			// 暂停UI以便进行交互式输入
-			if !core.DisableDynamicUI {
-				ui.Suspend()
-			}
-
-			cyan := color.New(color.FgCyan).SprintFunc()
-			yellow := color.New(color.FgYellow).SprintFunc()
-			core.SafePrintf("\n%s\n", cyan("🔍 检测到所有文件都已存在于目标位置。"))
-			core.SafePrintf("%s", yellow("是否进行本地文件校验？(y/N): "))
-
-			reader := bufio.NewReader(os.Stdin)
-			response, _ := reader.ReadString('\n')
-			response = strings.TrimSpace(strings.ToLower(response))
-
-			// 恢复UI
-			if !core.DisableDynamicUI {
-				ui.Resume()
-			}
-
-			shouldSkip = (response != "y" && response != "yes")
+		green := color.New(color.FgGreen).SprintFunc()
+		if core.Config.SkipExistingValidation {
+			core.SafePrintln(green("✅ 自动跳过（所有文件已存在），任务完成！"))
+		} else {
+			core.SafePrintln(green("✅ 跳过下载（所有文件已存在），任务完成！"))
 		}
-
-		if shouldSkip {
-			green := color.New(color.FgGreen).SprintFunc()
-			if core.Config.SkipExistingValidation {
-				core.SafePrintln(green("✅ 自动跳过校验（所有文件已存在），任务完成！"))
-			} else {
-				core.SafePrintln(green("✅ 跳过校验，任务完成！"))
-			}
-			// 标记所有文件为已完成
-			for _, trackNum := range selected {
-				core.OkDict[albumId] = append(core.OkDict[albumId], trackNum)
-				core.SharedLock.Lock()
-				core.Counter.Total++
-				core.Counter.Success++
-				core.SharedLock.Unlock()
-			}
-			return nil
+		// 标记所有文件为已完成
+		for _, trackNum := range selected {
+			core.OkDict[albumId] = append(core.OkDict[albumId], trackNum)
+			core.SharedLock.Lock()
+			core.Counter.Total++
+			core.Counter.Success++
+			core.SharedLock.Unlock()
 		}
-		fmt.Println(color.New(color.FgCyan).SprintFunc()("开始进行本地文件校验..."))
+		return nil
 	}
 
 	// 使用批次迭代器进行数据层分批处理
