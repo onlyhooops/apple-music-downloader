@@ -18,7 +18,15 @@ import (
 	"main/internal/history"
 	"main/internal/parser"
 
+	"github.com/fatih/color"
 	"github.com/spf13/pflag"
+)
+
+// 版本信息（编译时通过 ldflags 注入）
+var (
+	Version   = "dev"     // 版本号
+	BuildTime = "unknown" // 编译时间
+	GitCommit = "unknown" // Git提交哈希
 )
 
 func handleSingleMV(urlRaw string) {
@@ -362,7 +370,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
 	for i, urlToProcess := range finalUrls {
 		albumId, albumName, err := processURL(urlToProcess, nil, nil, i+1, totalTasks)
-		
+
 		// 记录到历史
 		if task != nil && albumId != "" {
 			status := "success"
@@ -371,7 +379,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				status = "failed"
 				errorMsg = err.Error()
 			}
-			
+
 			history.AddRecord(history.DownloadRecord{
 				URL:        urlToProcess,
 				AlbumID:    albumId,
@@ -381,7 +389,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				ErrorMsg:   errorMsg,
 			})
 		}
-		
+
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
 			core.SafePrintf("\n%s\n\n", strings.Repeat("=", 80))
@@ -399,6 +407,18 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 }
 
 func main() {
+	// 打印版本信息
+	cyan := color.New(color.FgCyan, color.Bold)
+	yellow := color.New(color.FgYellow)
+	fmt.Println(strings.Repeat("=", 80))
+	cyan.Printf("🎵 Apple Music Downloader %s\n", Version)
+	yellow.Printf("📅 编译时间: %s\n", BuildTime)
+	if GitCommit != "unknown" {
+		yellow.Printf("🔖 Git提交: %s\n", GitCommit)
+	}
+	fmt.Println(strings.Repeat("=", 80))
+	fmt.Println()
+
 	core.InitFlags()
 
 	pflag.Usage = func() {
