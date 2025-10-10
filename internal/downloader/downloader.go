@@ -802,7 +802,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	// 如果所有文件都已存在，根据配置决定是否要进行校验
 	if allFilesExist && len(selected) > 0 {
 		shouldSkip := core.Config.SkipExistingValidation
-		
+
 		// 如果未配置自动跳过，则询问用户
 		if !shouldSkip {
 			// 暂停UI以便进行交互式输入
@@ -826,7 +826,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 			shouldSkip = (response != "y" && response != "yes")
 		}
-		
+
 		if shouldSkip {
 			green := color.New(color.FgGreen).SprintFunc()
 			if core.Config.SkipExistingValidation {
@@ -849,7 +849,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	// 使用批次迭代器进行数据层分批处理
 	batchIterator := structs.NewBatchIterator(selected, core.Config.BatchSize)
-	
+
 	for batch, hasMore := batchIterator.Next(); hasMore; batch, hasMore = batchIterator.Next() {
 		// 显示批次开始信息（多批次时）
 		if batch.TotalBatches > 1 {
@@ -862,7 +862,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				ui.Resume()
 			}
 		}
-		
+
 		// 初始化当前批次的 TrackStatuses
 		core.TrackStatuses = make([]core.TrackStatus, len(batch.Tracks))
 		for i, trackNum := range batch.Tracks {
@@ -899,144 +899,149 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		semaphore := make(chan struct{}, numThreads)
 
 		for i, trackNum := range batch.Tracks {
-		wg.Add(1)
-		go func(trackIndexInMeta int, statusIndex int) {
-			semaphore <- struct{}{}
-			defer func() {
-				<-semaphore
-				wg.Done()
-			}()
-
-			trackData := meta.Data[0].Relationships.Tracks.Data[trackIndexInMeta-1]
-
-			core.SharedLock.Lock()
-			isDone := utils.IsInArray(core.OkDict[albumId], trackIndexInMeta)
-			core.SharedLock.Unlock()
-
-			if isDone {
-				ui.UpdateStatus(statusIndex, "已存在", color.New(color.FgCyan).SprintFunc())
-				core.SharedLock.Lock()
-				core.Counter.Total++
-				core.Counter.Success++
-				core.SharedLock.Unlock()
-				return
-			}
-
-			red := color.New(color.FgRed).SprintFunc()
-			yellow := color.New(color.FgYellow).SprintFunc()
-
-			const PostDownloadMaxRetries = 3
-
-			for attempt := 1; attempt <= PostDownloadMaxRetries; attempt++ {
-				if attempt > 1 {
-					ui.UpdateStatus(statusIndex, fmt.Sprintf("第 %d/%d 次重试...", attempt, PostDownloadMaxRetries), yellow)
-					time.Sleep(2 * time.Second)
-				}
-
-				progressChan := make(chan runv14.ProgressUpdate, 10)
-				go func() {
-					for p := range progressChan {
-						speedStr := utils.FormatSpeed(p.SpeedBPS)
-						account := &workingAccounts[statusIndex%len(workingAccounts)]
-						accountInfo := fmt.Sprintf("%s 账号", strings.ToUpper(account.Storefront))
-						var status string
-						if p.Stage == "decrypt" {
-							status = fmt.Sprintf("%s %s %d%% (%s)", yellow(accountInfo), red("解密中"), p.Percentage, speedStr)
-						} else {
-							status = fmt.Sprintf("%s 下载中 %d%% (%s)", yellow(accountInfo), p.Percentage, speedStr)
-						}
-						ui.UpdateStatus(statusIndex, status, color.New(color.FgYellow).SprintFunc())
-					}
+			wg.Add(1)
+			go func(trackIndexInMeta int, statusIndex int) {
+				semaphore <- struct{}{}
+				defer func() {
+					<-semaphore
+					wg.Done()
 				}()
 
-				trackPath, err := downloadTrackWithFallback(trackData, meta, albumId, storefront, baseSaveFolder, finalSaveFolder, Codec, covPath, workingAccounts, statusIndex, statusIndex, ui.UpdateStatus, progressChan)
-				close(progressChan)
+				trackData := meta.Data[0].Relationships.Tracks.Data[trackIndexInMeta-1]
 
-				if err != nil {
-					// downloadTrackWithFallback has its own retries. If it fails, we consider it a permanent failure for this track.
+				core.SharedLock.Lock()
+				isDone := utils.IsInArray(core.OkDict[albumId], trackIndexInMeta)
+				core.SharedLock.Unlock()
+
+				if isDone {
+					ui.UpdateStatus(statusIndex, "已存在", color.New(color.FgCyan).SprintFunc())
 					core.SharedLock.Lock()
 					core.Counter.Total++
-					ui.UpdateStatus(statusIndex, fmt.Sprintf("下载失败: %v", err), red)
-					core.Counter.Error++
+					core.Counter.Success++
 					core.SharedLock.Unlock()
 					return
 				}
 
-				var postDownloadError error
-				wasFixed := false
+				red := color.New(color.FgRed).SprintFunc()
+				yellow := color.New(color.FgYellow).SprintFunc()
 
-				// Step 2: Re-encode if necessary
-				if core.Config.FfmpegFix && trackData.Type != "music-videos" {
-					isAAC := core.Dl_aac && *core.Aac_type == "aac-lc"
-					if !isAAC {
-						var fixErr error
-						wasFixed, fixErr = checkAndReEncodeTrack(trackPath, statusIndex)
-						if fixErr != nil {
-							postDownloadError = fmt.Errorf("修复失败: %w", fixErr)
+				const PostDownloadMaxRetries = 3
+
+				for attempt := 1; attempt <= PostDownloadMaxRetries; attempt++ {
+					// 重试信息移到错误处理部分统一显示
+
+					progressChan := make(chan runv14.ProgressUpdate, 10)
+					go func() {
+						for p := range progressChan {
+							speedStr := utils.FormatSpeed(p.SpeedBPS)
+							account := &workingAccounts[statusIndex%len(workingAccounts)]
+							accountInfo := fmt.Sprintf("%s 账号", strings.ToUpper(account.Storefront))
+							var status string
+							if p.Stage == "decrypt" {
+								status = fmt.Sprintf("%s %s %d%% (%s)", yellow(accountInfo), red("解密中"), p.Percentage, speedStr)
+							} else {
+								status = fmt.Sprintf("%s 下载中 %d%% (%s)", yellow(accountInfo), p.Percentage, speedStr)
+							}
+							ui.UpdateStatus(statusIndex, status, color.New(color.FgYellow).SprintFunc())
+						}
+					}()
+
+					trackPath, err := downloadTrackWithFallback(trackData, meta, albumId, storefront, baseSaveFolder, finalSaveFolder, Codec, covPath, workingAccounts, statusIndex, statusIndex, ui.UpdateStatus, progressChan)
+					close(progressChan)
+
+					if err != nil {
+						// downloadTrackWithFallback has its own retries. If it fails, we consider it a permanent failure for this track.
+						core.SharedLock.Lock()
+						core.Counter.Total++
+						ui.UpdateStatus(statusIndex, fmt.Sprintf("下载失败: %v", err), red)
+						core.Counter.Error++
+						core.SharedLock.Unlock()
+						return
+					}
+
+					var postDownloadError error
+					wasFixed := false
+
+					// Step 2: Re-encode if necessary
+					if core.Config.FfmpegFix && trackData.Type != "music-videos" {
+						isAAC := core.Dl_aac && *core.Aac_type == "aac-lc"
+						if !isAAC {
+							var fixErr error
+							wasFixed, fixErr = checkAndReEncodeTrack(trackPath, statusIndex)
+							if fixErr != nil {
+								postDownloadError = fmt.Errorf("修复失败: %w", fixErr)
+							}
 						}
 					}
-				}
 
-				// Step 3: Write tags (only if previous step was successful)
-				if postDownloadError == nil {
-					var finalLrc string
-					if lyricAccount != nil && (core.Config.EmbedLrc || core.Config.SaveLrcFile) && trackData.Type != "music-videos" {
-						lrcStr, lrcErr := lyrics.Get(storefront, trackData.ID, core.Config.LrcType, core.Config.Language, core.Config.LrcFormat, core.DeveloperToken, lyricAccount.MediaUserToken)
-						if lrcErr == nil {
-							if core.Config.SaveLrcFile {
-								lrcFilename := fmt.Sprintf("%s.lrc", strings.TrimSuffix(filepath.Base(trackPath), filepath.Ext(filepath.Base(trackPath))))
-								_ = metadata.WriteLyrics(filepath.Dir(trackPath), lrcFilename, lrcStr)
-							}
-							if core.Config.EmbedLrc {
-								finalLrc = lrcStr
+					// Step 3: Write tags (only if previous step was successful)
+					if postDownloadError == nil {
+						var finalLrc string
+						if lyricAccount != nil && (core.Config.EmbedLrc || core.Config.SaveLrcFile) && trackData.Type != "music-videos" {
+							lrcStr, lrcErr := lyrics.Get(storefront, trackData.ID, core.Config.LrcType, core.Config.Language, core.Config.LrcFormat, core.DeveloperToken, lyricAccount.MediaUserToken)
+							if lrcErr == nil {
+								if core.Config.SaveLrcFile {
+									lrcFilename := fmt.Sprintf("%s.lrc", strings.TrimSuffix(filepath.Base(trackPath), filepath.Ext(filepath.Base(trackPath))))
+									_ = metadata.WriteLyrics(filepath.Dir(trackPath), lrcFilename, lrcStr)
+								}
+								if core.Config.EmbedLrc {
+									finalLrc = lrcStr
+								}
 							}
 						}
-					}
 
-					tagErr := metadata.WriteMP4Tags(trackPath, finalLrc, meta, trackIndexInMeta, len(meta.Data[0].Relationships.Tracks.Data))
-					if tagErr != nil {
-						postDownloadError = fmt.Errorf("标签写入失败: %w", tagErr)
+						tagErr := metadata.WriteMP4Tags(trackPath, finalLrc, meta, trackIndexInMeta, len(meta.Data[0].Relationships.Tracks.Data))
+						if tagErr != nil {
+							postDownloadError = fmt.Errorf("标签写入失败: %w", tagErr)
+						}
 					}
-				}
 
 				// Check if any post-download step failed
 				if postDownloadError != nil {
-					ui.UpdateStatus(statusIndex, postDownloadError.Error(), yellow)
 					os.Remove(trackPath) // Delete the problematic file
-
+					
+					// 截断过长的错误信息，避免换行刷屏
+					errorMsg := postDownloadError.Error()
+					if len(errorMsg) > 50 {
+						errorMsg = errorMsg[:47] + "..."
+					}
+					
 					if attempt < PostDownloadMaxRetries {
+						// 显示重试信息（原地更新，不刷屏）
+						ui.UpdateStatus(statusIndex, fmt.Sprintf("重试 %d/%d: %s", attempt, PostDownloadMaxRetries, errorMsg), yellow)
+						time.Sleep(1500 * time.Millisecond) // 缩短等待时间
 						continue // Go to the next retry attempt
 					} else {
-						// All retries failed, report final error
-						ui.UpdateStatus(statusIndex, fmt.Sprintf("所有重试均失败: %v", postDownloadError), red)
+						// 所有重试失败，跳过该曲目（不计入错误计数）
+						ui.UpdateStatus(statusIndex, "已跳过 (标签失败)", color.New(color.FgYellow).SprintFunc())
 						core.SharedLock.Lock()
 						core.Counter.Total++
-						core.Counter.Error++
+						// 不增加 Error 计数，视为跳过而非错误
 						core.SharedLock.Unlock()
 						return
 					}
 				}
 
-				// All steps successful
-				core.SharedLock.Lock()
-				core.Counter.Total++
-				core.Counter.Success++
-				if wasFixed {
-					ui.UpdateStatus(statusIndex, "重编码完成", color.New(color.FgRed).SprintFunc())
-				} else {
-					ui.UpdateStatus(statusIndex, "下载完成", color.New(color.FgGreen).SprintFunc())
+					// All steps successful
+					core.SharedLock.Lock()
+					core.Counter.Total++
+					core.Counter.Success++
+					if wasFixed {
+						ui.UpdateStatus(statusIndex, "重编码完成", color.New(color.FgRed).SprintFunc())
+					} else {
+						ui.UpdateStatus(statusIndex, "下载完成", color.New(color.FgGreen).SprintFunc())
+					}
+					core.SharedLock.Unlock()
+					return // Mission accomplished, exit goroutine
 				}
-				core.SharedLock.Unlock()
-				return // Mission accomplished, exit goroutine
-			}
-		}(trackNum, i)
+			}(trackNum, i)
 		}
 
 		wg.Wait()
 		close(doneUI)
 		time.Sleep(200 * time.Millisecond)
 		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
-		
+
 		// 如果使用了缓存，批次完成后立即转移文件
 		if usingCache && batch.TotalBatches > 1 {
 			// 检查缓存目录中是否有新文件需要转移
@@ -1093,7 +1098,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 				}
 			}
 		}
-		
+
 		// 显示批次完成信息（多批次时）
 		if batch.TotalBatches > 1 && !batch.IsLast {
 			if !core.DisableDynamicUI {
