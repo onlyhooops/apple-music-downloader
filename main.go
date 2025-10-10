@@ -348,7 +348,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 		} else {
 			core.SafePrintf("📝 任务总数: %d\n", totalTasks)
 		}
-		core.SafePrintf("⚡ 执行模式: 串行（按顺序逐个下载）\n")
+		core.SafePrintf("⚡ 执行模式: 串行模式 \n")
 		core.SafePrintf("📦 专辑内并发: 由配置文件控制\n")
 		if task != nil {
 			core.SafePrintf("📜 历史记录: 已启用\n")
@@ -362,7 +362,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
 	for i, urlToProcess := range finalUrls {
 		albumId, albumName, err := processURL(urlToProcess, nil, nil, i+1, totalTasks)
-
+		
 		// 记录到历史
 		if task != nil && albumId != "" {
 			status := "success"
@@ -371,7 +371,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				status = "failed"
 				errorMsg = err.Error()
 			}
-
+			
 			history.AddRecord(history.DownloadRecord{
 				URL:        urlToProcess,
 				AlbumID:    albumId,
@@ -380,6 +380,11 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				DownloadAt: time.Now(),
 				ErrorMsg:   errorMsg,
 			})
+		}
+		
+		// 任务之间添加视觉间隔（最后一个任务不需要）
+		if isBatch && i < len(finalUrls)-1 {
+			core.SafePrintf("\n%s\n\n", strings.Repeat("=", 80))
 		}
 	}
 
