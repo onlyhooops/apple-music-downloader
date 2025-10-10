@@ -325,8 +325,17 @@ func main() {
 				var urls []string
 				for _, line := range lines {
 					trimmedLine := strings.TrimSpace(line)
-					if trimmedLine != "" {
-						urls = append(urls, trimmedLine)
+					// 跳过空行和注释行（以#开头）
+					if trimmedLine == "" || strings.HasPrefix(trimmedLine, "#") {
+						continue
+					}
+					// 支持一行多个链接（空格分隔）
+					linksInLine := strings.Fields(trimmedLine)
+					for _, link := range linksInLine {
+						link = strings.TrimSpace(link)
+						if link != "" {
+							urls = append(urls, link)
+						}
 					}
 				}
 				runDownloads(urls, true)
