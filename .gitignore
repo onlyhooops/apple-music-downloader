@@ -20,5 +20,5 @@
 !WORK_REST_CYCLE.md
 !utils/*
 !internal/*
-config.yaml
+!config.yaml
 !config.yaml.example

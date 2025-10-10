@@ -29,7 +29,7 @@ var (
 	Mv_max           *int
 	Mv_audio_type    *string
 	Aac_type         *string
-	StartFrom        int    // 从第几个链接开始下载（从1开始计数）
+	StartFrom        int // 从第几个链接开始下载（从1开始计数）
 	Config           structs.ConfigSet
 	Counter          structs.Counter
 	OkDict           = make(map[string][]int)
