@@ -29,6 +29,7 @@ var (
 	Mv_max           *int
 	Mv_audio_type    *string
 	Aac_type         *string
+	StartFrom        int    // 从第几个链接开始下载（从1开始计数）
 	Config           structs.ConfigSet
 	Counter          structs.Counter
 	OkDict           = make(map[string][]int)
@@ -70,6 +71,7 @@ func InitFlags() {
 	pflag.BoolVar(&Artist_select, "all-album", false, "下载歌手的所有专辑")
 	pflag.BoolVar(&Debug_mode, "debug", false, "启用调试模式，显示音频质量信息")
 	pflag.BoolVar(&DisableDynamicUI, "no-ui", false, "禁用动态终端UI，回退到纯日志输出模式（用于CI/调试或兼容性）")
+	pflag.IntVar(&StartFrom, "start", 0, "从 TXT 文件的第几个链接开始下载（从 1 开始计数，例如：--start 44）")
 	Alac_max = pflag.Int("alac-max", 0, "指定 ALAC 下载的最大音质（如：192000, 96000, 48000）")
 	Atmos_max = pflag.Int("atmos-max", 0, "指定 Dolby Atmos 下载的最大音质（如：2768, 2448）")
 	Aac_type = pflag.String("aac-type", "aac", "选择 AAC 类型（可选：aac, aac-binaural, aac-downmix）")

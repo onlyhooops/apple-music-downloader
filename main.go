@@ -301,6 +301,21 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	}
 
 	totalTasks := len(finalUrls)
+	
+	// 处理 --start 参数
+	startIndex := 0  // 实际数组索引（从0开始）
+	if core.StartFrom > 0 {
+		if core.StartFrom > totalTasks {
+			core.SafePrintf("⚠️  起始位置 %d 超过了总任务数 %d，将从第 1 个开始\n", core.StartFrom, totalTasks)
+			core.StartFrom = 1
+		} else {
+			startIndex = core.StartFrom - 1  // 用户输入从1开始，转换为0开始的索引
+			skippedCount := startIndex
+			core.SafePrintf("⏭️  跳过前 %d 个任务，从第 %d 个开始下载\n", skippedCount, core.StartFrom)
+			finalUrls = finalUrls[startIndex:]  // 跳过前面的链接
+			totalTasks = len(finalUrls)          // 更新剩余任务数
+		}
+	}
 
 	// 初始化历史记录系统
 	var task *history.TaskHistory
@@ -387,12 +402,18 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 		}
 	}
 
+	// 保存原始总数用于显示
+	originalTotalTasks := len(initialUrls)
+	
 	if isBatch {
 		core.SafePrintf("\n📋 ========== 开始下载任务 ==========\n")
 		if len(initialUrls) != totalTasks {
-			core.SafePrintf("📝 预处理完成: %d 个链接 → %d 个任务\n", len(initialUrls), totalTasks)
+			core.SafePrintf("📝 预处理完成: %d 个链接 → %d 个任务\n", len(initialUrls), originalTotalTasks)
 		} else {
-			core.SafePrintf("📝 任务总数: %d\n", totalTasks)
+			core.SafePrintf("📝 任务总数: %d\n", originalTotalTasks)
+		}
+		if core.StartFrom > 0 {
+			core.SafePrintf("📝 实际下载: 第 %d 至第 %d 个（共 %d 个）\n", core.StartFrom, originalTotalTasks, totalTasks)
 		}
 		core.SafePrintf("⚡ 执行模式: 串行模式 \n")
 		core.SafePrintf("📦 专辑内并发: 由配置文件控制\n")
@@ -401,7 +422,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 		}
 		core.SafePrintf("====================================\n\n")
 	} else {
-		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n--------------------\n", totalTasks)
+		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n--------------------\n", originalTotalTasks)
 	}
 
 	// 批量模式：串行执行（按链接顺序依次下载）
@@ -418,7 +439,11 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	}
 	
 	for i, urlToProcess := range finalUrls {
-		albumId, albumName, err := processURL(urlToProcess, nil, nil, i+1, totalTasks)
+		// 计算实际的任务编号（考虑 --start 参数）
+		actualTaskNum := i + 1 + startIndex  // 实际编号 = 当前索引 + 1 + 跳过的数量
+		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
+		
+		albumId, albumName, err := processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks)
 
 		// 记录到历史
 		if task != nil && albumId != "" {
