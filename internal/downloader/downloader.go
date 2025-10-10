@@ -799,29 +799,41 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		}
 	}
 
-	// 如果所有文件都已存在，询问用户是否要进行校验
+	// 如果所有文件都已存在，根据配置决定是否要进行校验
 	if allFilesExist && len(selected) > 0 {
-		// 暂停UI以便进行交互式输入
-		if !core.DisableDynamicUI {
-			ui.Suspend()
+		shouldSkip := core.Config.SkipExistingValidation
+		
+		// 如果未配置自动跳过，则询问用户
+		if !shouldSkip {
+			// 暂停UI以便进行交互式输入
+			if !core.DisableDynamicUI {
+				ui.Suspend()
+			}
+
+			cyan := color.New(color.FgCyan).SprintFunc()
+			yellow := color.New(color.FgYellow).SprintFunc()
+			core.SafePrintf("\n%s\n", cyan("🔍 检测到所有文件都已存在于目标位置。"))
+			core.SafePrintf("%s", yellow("是否进行本地文件校验？(y/N): "))
+
+			reader := bufio.NewReader(os.Stdin)
+			response, _ := reader.ReadString('\n')
+			response = strings.TrimSpace(strings.ToLower(response))
+
+			// 恢复UI
+			if !core.DisableDynamicUI {
+				ui.Resume()
+			}
+
+			shouldSkip = (response != "y" && response != "yes")
 		}
-
-		cyan := color.New(color.FgCyan).SprintFunc()
-		yellow := color.New(color.FgYellow).SprintFunc()
-		core.SafePrintf("\n%s\n", cyan("检测到所有文件都已存在于目标位置。"))
-		core.SafePrintf("%s", yellow("是否进行本地文件校验？(y/N): "))
-
-		reader := bufio.NewReader(os.Stdin)
-		response, _ := reader.ReadString('\n')
-		response = strings.TrimSpace(strings.ToLower(response))
-
-		// 恢复UI
-		if !core.DisableDynamicUI {
-			ui.Resume()
-		}
-
-		if response != "y" && response != "yes" {
-			core.SafePrintln(color.New(color.FgGreen).SprintFunc()("跳过校验，任务完成！"))
+		
+		if shouldSkip {
+			green := color.New(color.FgGreen).SprintFunc()
+			if core.Config.SkipExistingValidation {
+				core.SafePrintln(green("✅ 自动跳过校验（所有文件已存在），任务完成！"))
+			} else {
+				core.SafePrintln(green("✅ 跳过校验，任务完成！"))
+			}
 			// 标记所有文件为已完成
 			for _, trackNum := range selected {
 				core.OkDict[albumId] = append(core.OkDict[albumId], trackNum)
@@ -1024,6 +1036,63 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		close(doneUI)
 		time.Sleep(200 * time.Millisecond)
 		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
+		
+		// 如果使用了缓存，批次完成后立即转移文件
+		if usingCache && batch.TotalBatches > 1 {
+			// 检查缓存目录中是否有新文件需要转移
+			var cacheSingerFolder string
+			if finalArtistDir != "" {
+				cacheSingerFolder = filepath.Join(baseSaveFolder, finalArtistDir)
+			} else {
+				cacheSingerFolder = baseSaveFolder
+			}
+			cacheAlbumFolder := filepath.Join(cacheSingerFolder, finalAlbumDir)
+
+			// 检查缓存专辑目录是否存在且有内容
+			hasNewFiles := false
+			if info, err := os.Stat(cacheAlbumFolder); err == nil && info.IsDir() {
+				// 检查目录是否有文件
+				entries, _ := os.ReadDir(cacheAlbumFolder)
+				for _, entry := range entries {
+					if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".m4a") {
+						hasNewFiles = true
+						break
+					}
+				}
+			}
+
+			if hasNewFiles {
+				// 有新文件，需要转移
+				if !core.DisableDynamicUI {
+					ui.Suspend()
+				}
+				cyan := color.New(color.FgCyan).SprintFunc()
+				core.SafePrintf("\n%s\n", cyan(fmt.Sprintf("📤 批次 %d/%d: 正在转移文件到目标位置...", batch.BatchNum, batch.TotalBatches)))
+
+				// 构建最终目标路径
+				var targetSingerFolder string
+				if finalArtistDir != "" {
+					targetSingerFolder = filepath.Join(finalSaveFolder, finalArtistDir)
+				} else {
+					targetSingerFolder = finalSaveFolder
+				}
+				targetAlbumFolder := filepath.Join(targetSingerFolder, finalAlbumDir)
+
+				// 移动专辑文件夹
+				if err := utils.SafeMoveDirectory(cacheAlbumFolder, targetAlbumFolder); err != nil {
+					fmt.Printf("从缓存移动文件失败: %v\n", err)
+					if !core.DisableDynamicUI {
+						ui.Resume()
+					}
+					return fmt.Errorf("从缓存移动文件失败: %w", err)
+				}
+
+				core.SafePrintf("%s\n", color.New(color.FgGreen).SprintFunc()(fmt.Sprintf("✅ 批次 %d/%d: 文件转移完成", batch.BatchNum, batch.TotalBatches)))
+				if !core.DisableDynamicUI {
+					ui.Resume()
+				}
+			}
+		}
 		
 		// 显示批次完成信息（多批次时）
 		if batch.TotalBatches > 1 {

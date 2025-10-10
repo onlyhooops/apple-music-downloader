@@ -96,6 +96,9 @@ mv_downloadthreads: 3             # MV 视频文件并行下载线程数
 batch-size: 20                    # 每批处理的曲目数量，0 表示不分批（一次性处理所有曲目）
                                   # 建议值: 小型专辑设为 0，大型专辑（100+ 曲目）设为 20-50
 
+# 智能跳过配置
+skip-existing-validation: false   # 是否自动跳过已存在文件的校验（true: 自动跳过, false: 询问用户）
+
 
 # ================================================================
 # 5. FFmpeg 配置 (FFmpeg Configuration)

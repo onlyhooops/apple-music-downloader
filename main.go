@@ -276,13 +276,6 @@ func runDownloads(initialUrls []string, isBatch bool) {
 		return
 	}
 
-	numThreads := 1
-	if isBatch && core.Config.TxtDownloadThreads > 1 {
-		numThreads = core.Config.TxtDownloadThreads
-	}
-
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, numThreads)
 	totalTasks := len(finalUrls)
 
 	if isBatch {
@@ -292,19 +285,18 @@ func runDownloads(initialUrls []string, isBatch bool) {
 		} else {
 			core.SafePrintf("📝 任务总数: %d\n", totalTasks)
 		}
-		core.SafePrintf("⚡ 并发数: %d\n", numThreads)
+		core.SafePrintf("⚡ 执行模式: 串行（按顺序逐个下载）\n")
+		core.SafePrintf("📦 专辑内并发: 由配置文件控制\n")
 		core.SafePrintf("====================================\n\n")
 	} else {
-		core.SafePrintf("📋 开始下载任务\n📝 总数: %d, 并发数: %d\n--------------------\n", totalTasks, numThreads)
+		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n--------------------\n", totalTasks)
 	}
 
+	// 批量模式：串行执行（按链接顺序依次下载）
+	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
 	for i, urlToProcess := range finalUrls {
-		wg.Add(1)
-		semaphore <- struct{}{}
-		go processURL(urlToProcess, &wg, semaphore, i+1, totalTasks)
+		processURL(urlToProcess, nil, nil, i+1, totalTasks)
 	}
-
-	wg.Wait()
 }
 
 func main() {
