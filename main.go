@@ -10,10 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"main/internal/api"
 	"main/internal/core"
 	"main/internal/downloader"
+	"main/internal/history"
 	"main/internal/parser"
 
 	"github.com/spf13/pflag"
@@ -139,7 +141,7 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Unlock()
 }
 
-func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int) {
+func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int) (string, string, error) {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -152,10 +154,12 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	var storefront, albumId string
+	var albumName string
+	_ = albumName // 用于历史记录
 
 	if strings.Contains(urlRaw, "/music-video/") {
 		handleSingleMV(urlRaw)
-		return
+		return "", "", nil
 	}
 
 	if strings.Contains(urlRaw, "/song/") {
@@ -163,12 +167,12 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		accountForSong, err := core.GetAccountForStorefront(tempStorefront)
 		if err != nil {
 			fmt.Printf("获取歌曲信息失败 for %s: %v\n", urlRaw, err)
-			return
+			return "", "", err
 		}
 		urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
 		if err != nil {
 			fmt.Printf("获取歌曲链接失败 for %s: %v\n", urlRaw, err)
-			return
+			return "", "", err
 		}
 		core.Dl_song = true
 	}
@@ -180,23 +184,35 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 	}
 
 	if albumId == "" {
+		err := fmt.Errorf("无效的URL")
 		fmt.Printf("无效的URL: %s\n", urlRaw)
-		return
+		return "", "", err
+	}
+
+	// 获取专辑信息用于历史记录
+	mainAccount, err := core.GetAccountForStorefront(storefront)
+	if err == nil {
+		meta, err := api.GetMeta(albumId, mainAccount, storefront)
+		if err == nil && len(meta.Data) > 0 {
+			albumName = meta.Data[0].Attributes.Name
+		}
 	}
 
 	parse, err := url.Parse(urlRaw)
 	if err != nil {
 		log.Printf("解析URL失败 %s: %v", urlRaw, err)
-		return
+		return albumId, albumName, err
 	}
 	var urlArg_i = parse.Query().Get("i")
 	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
 	if err != nil {
 		core.SafePrintf("专辑下载失败: %s -> %v\n", urlRaw, err)
+		return albumId, albumName, err
 	} else {
 		if totalTasks > 1 {
 			core.SafePrintf("✅ [%d/%d] 任务完成: %s\n", currentTask, totalTasks, urlRaw)
 		}
+		return albumId, albumName, nil
 	}
 }
 
@@ -227,7 +243,7 @@ func parseTxtFile(filePath string) ([]string, error) {
 	return urls, nil
 }
 
-func runDownloads(initialUrls []string, isBatch bool) {
+func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	var finalUrls []string
 
 	// 显示输入链接统计
@@ -278,6 +294,53 @@ func runDownloads(initialUrls []string, isBatch bool) {
 
 	totalTasks := len(finalUrls)
 
+	// 初始化历史记录系统
+	var task *history.TaskHistory
+	var completedURLs map[string]bool
+	if isBatch && taskFile != "" {
+		// 初始化历史记录目录
+		if err := history.InitHistory(); err != nil {
+			core.SafePrintf("⚠️  初始化历史记录失败: %v\n", err)
+		}
+
+		// 检查历史记录，获取已完成的URL
+		var err error
+		completedURLs, err = history.GetCompletedURLs(taskFile)
+		if err != nil {
+			core.SafePrintf("⚠️  读取历史记录失败: %v\n", err)
+			completedURLs = make(map[string]bool)
+		}
+
+		// 过滤已完成的URL
+		skippedCount := 0
+		var remainingUrls []string
+		for _, url := range finalUrls {
+			if completedURLs[url] {
+				skippedCount++
+			} else {
+				remainingUrls = append(remainingUrls, url)
+			}
+		}
+
+		if skippedCount > 0 {
+			core.SafePrintf("📜 历史记录检测: 发现 %d 个已完成的任务\n", skippedCount)
+			core.SafePrintf("⏭️  已自动跳过，剩余 %d 个任务\n\n", len(remainingUrls))
+			finalUrls = remainingUrls
+			totalTasks = len(finalUrls)
+
+			if totalTasks == 0 {
+				core.SafePrintf("✅ 所有任务都已完成，无需重复下载！\n")
+				return
+			}
+		}
+
+		// 创建新任务
+		task, err = history.NewTask(taskFile, totalTasks)
+		if err != nil {
+			core.SafePrintf("⚠️  创建任务记录失败: %v\n", err)
+		}
+	}
+
 	if isBatch {
 		core.SafePrintf("\n📋 ========== 开始下载任务 ==========\n")
 		if len(initialUrls) != totalTasks {
@@ -287,6 +350,9 @@ func runDownloads(initialUrls []string, isBatch bool) {
 		}
 		core.SafePrintf("⚡ 执行模式: 串行（按顺序逐个下载）\n")
 		core.SafePrintf("📦 专辑内并发: 由配置文件控制\n")
+		if task != nil {
+			core.SafePrintf("📜 历史记录: 已启用\n")
+		}
 		core.SafePrintf("====================================\n\n")
 	} else {
 		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n--------------------\n", totalTasks)
@@ -295,7 +361,35 @@ func runDownloads(initialUrls []string, isBatch bool) {
 	// 批量模式：串行执行（按链接顺序依次下载）
 	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
 	for i, urlToProcess := range finalUrls {
-		processURL(urlToProcess, nil, nil, i+1, totalTasks)
+		albumId, albumName, err := processURL(urlToProcess, nil, nil, i+1, totalTasks)
+
+		// 记录到历史
+		if task != nil && albumId != "" {
+			status := "success"
+			errorMsg := ""
+			if err != nil {
+				status = "failed"
+				errorMsg = err.Error()
+			}
+
+			history.AddRecord(history.DownloadRecord{
+				URL:        urlToProcess,
+				AlbumID:    albumId,
+				AlbumName:  albumName,
+				Status:     status,
+				DownloadAt: time.Now(),
+				ErrorMsg:   errorMsg,
+			})
+		}
+	}
+
+	// 保存历史记录
+	if task != nil {
+		if err := history.SaveTask(); err != nil {
+			core.SafePrintf("⚠️  保存历史记录失败: %v\n", err)
+		} else {
+			core.SafePrintf("\n📜 历史记录已保存至: history/%s.json\n", task.TaskID)
+		}
 	}
 }
 
@@ -372,18 +466,19 @@ func main() {
 					return
 				}
 				fmt.Printf("📊 从文件 %s 中解析到 %d 个链接\n\n", input, len(urls))
-				runDownloads(urls, true)
+				runDownloads(urls, true, input)
 			} else {
 				fmt.Printf("错误: 文件不存在 %s\n", input)
 				return
 			}
 		} else {
-			runDownloads([]string{input}, false)
+			runDownloads([]string{input}, false, "")
 		}
 	} else {
 		// 处理命令行参数：支持TXT文件或直接的URL列表
 		var urls []string
 		isBatch := false
+		var taskFile string
 
 		for _, arg := range args {
 			if strings.HasSuffix(strings.ToLower(arg), ".txt") {
@@ -397,6 +492,10 @@ func main() {
 					fmt.Printf("📊 从文件 %s 中解析到 %d 个链接\n", arg, len(fileUrls))
 					urls = append(urls, fileUrls...)
 					isBatch = true
+					// 记录第一个txt文件作为任务文件
+					if taskFile == "" {
+						taskFile = arg
+					}
 				} else {
 					fmt.Printf("错误: 文件不存在 %s\n", arg)
 				}
@@ -414,7 +513,7 @@ func main() {
 			if isBatch {
 				fmt.Println()
 			}
-			runDownloads(urls, isBatch)
+			runDownloads(urls, isBatch, taskFile)
 		} else {
 			fmt.Println("没有有效的链接可供处理。")
 		}
