@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -77,7 +78,7 @@ func downloadChunk(wg *sync.WaitGroup, errChan chan error, progressBytes chan in
 			return
 		}
 	}
-	
+
 	buffer := make([]byte, Config.NetworkReadBufferKB*1024)
 	var writtenBytes int64 = 0
 	for {
@@ -225,7 +226,9 @@ func Run(adamId string, playlistUrl string, outfile string, account *structs.Acc
 	if err != nil {
 		return err
 	}
-	defer Close(conn)
+	defer func() {
+		_ = Close(conn) // 忽略 Close 错误，因为主要操作已完成
+	}()
 	err = downloadAndDecryptFile(conn, readTempFile, totalSize, outfile, adamId, segments, Config, progressChan)
 	if err != nil {
 		return err
@@ -306,14 +309,22 @@ func downloadAndDecryptFile(conn net.Conn, in io.Reader, totalSize int64, outfil
 		key := segment.Key
 		if key != nil {
 			if i != 0 {
-				SwitchKeys(rw)
+				if err := SwitchKeys(rw); err != nil {
+					return fmt.Errorf("switchKeys failed: %w", err)
+				}
 			}
 			if key.URI == prefetchKey {
-				SendString(rw, "0")
+				if err := SendString(rw, "0"); err != nil {
+					return fmt.Errorf("sendString failed: %w", err)
+				}
 			} else {
-				SendString(rw, adamId)
+				if err := SendString(rw, adamId); err != nil {
+					return fmt.Errorf("sendString failed: %w", err)
+				}
 			}
-			SendString(rw, key.URI)
+			if err := SendString(rw, key.URI); err != nil {
+				return fmt.Errorf("sendString failed: %w", err)
+			}
 		}
 		err = DecryptFragment(frag, tracks, rw)
 		if err != nil {
@@ -502,6 +513,10 @@ func cbcsFullSubsampleDecrypt(data []byte, conn *bufio.ReadWriter) error {
 	if truncatedLen == 0 {
 		return nil
 	}
+	// 防止整数溢出
+	if truncatedLen > math.MaxUint32 {
+		return fmt.Errorf("data too large: %d bytes", truncatedLen)
+	}
 	err := binary.Write(conn, binary.LittleEndian, uint32(truncatedLen))
 	if err != nil {
 		return err
@@ -526,6 +541,10 @@ func cbcsStripeDecrypt(data []byte, conn *bufio.ReadWriter, decryptBlockLen, ski
 	count := ((size - decryptBlockLen) / (decryptBlockLen + skipBlockLen)) + 1
 	totalLen := count * decryptBlockLen
 
+	// 防止整数溢出
+	if totalLen > math.MaxUint32 {
+		return fmt.Errorf("total length too large: %d bytes", totalLen)
+	}
 	err := binary.Write(conn, binary.LittleEndian, uint32(totalLen))
 	if err != nil {
 		return err
@@ -676,6 +695,12 @@ func DecryptFragment(frag *mp4.Fragment, tracks map[uint32]mp4.DecryptTrackInfo,
 	}
 	_, psshBytesRemoved := moof.RemovePsshs()
 	bytesRemoved += psshBytesRemoved
+
+	// 防止整数溢出：确保 bytesRemoved 在 int32 范围内
+	if bytesRemoved > math.MaxInt32 {
+		return fmt.Errorf("bytes removed too large for offset adjustment: %d", bytesRemoved)
+	}
+
 	for _, traf := range moof.Trafs {
 		for _, trun := range traf.Truns {
 			trun.DataOffset -= int32(bytesRemoved)
@@ -731,4 +756,3 @@ func RunOrchestrated(adamId string, playlistUrl string, targetStorefront string,
 	fmt.Println("##################################################")
 	return fmt.Errorf("所有服务均操作失败，最后一次的错误为: %w", lastError)
 }
-

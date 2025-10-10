@@ -242,7 +242,8 @@ func extsong(b string) bytes.Buffer {
 			BarEnd:        "",
 		}),
 	)
-	io.Copy(io.MultiWriter(&buffer, bar), resp.Body)
+	// 忽略 io.Copy 错误，因为这是下载进度显示，主要内容已经缓冲
+	_, _ = io.Copy(io.MultiWriter(&buffer, bar), resp.Body)
 	return buffer
 }
 func Run(adamId string, trackpath string, authtoken string, mutoken string, mvmode bool) (string, error) {

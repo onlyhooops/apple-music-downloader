@@ -220,7 +220,10 @@ func SafeMoveFile(src, dst string) error {
 	// 拷贝文件权限
 	srcInfo, err := os.Stat(src)
 	if err == nil {
-		os.Chmod(dst, srcInfo.Mode())
+		if chmodErr := os.Chmod(dst, srcInfo.Mode()); chmodErr != nil {
+			// 记录警告但不返回错误，因为文件已经成功复制
+			// 权限设置失败不应导致整个操作失败
+		}
 	}
 
 	// 删除源文件

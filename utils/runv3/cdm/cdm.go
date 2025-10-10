@@ -10,11 +10,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
+	"fmt"
+	"math"
+	"time"
+
 	"github.com/aead/cmac"
 	"google.golang.org/protobuf/proto"
 	"lukechampine.com/frand"
-	"math"
-	"time"
 )
 
 type CDM struct {
@@ -130,7 +132,12 @@ func (c *CDM) GetLicenseRequest() ([]byte, error) {
 	}
 
 	{
-		v := uint32(time.Now().Unix())
+		timestamp := time.Now().Unix()
+		// 防止整数溢出：确保 timestamp 在 uint32 范围内
+		if timestamp < 0 || timestamp > int64(math.MaxUint32) {
+			timestamp = int64(math.MaxUint32)
+		}
+		v := uint32(timestamp)
 		licenseRequest.Msg.RequestTime = &v
 	}
 
@@ -140,7 +147,8 @@ func (c *CDM) GetLicenseRequest() ([]byte, error) {
 	}
 
 	{
-		v := uint32(frand.Uint64n(math.MaxUint32))
+		// 安全地生成 uint32 随机数
+		v := uint32(frand.Uint64n(uint64(math.MaxUint32) + 1))
 		licenseRequest.Msg.KeyControlNonce = &v
 	}
 
@@ -155,8 +163,12 @@ func (c *CDM) GetLicenseRequest() ([]byte, error) {
 		const blockSize = 16
 
 		var cidKey, cidIV [blockSize]byte
-		frand.Read(cidKey[:])
-		frand.Read(cidIV[:])
+		if _, err := frand.Read(cidKey[:]); err != nil {
+			return nil, fmt.Errorf("failed to generate random key: %w", err)
+		}
+		if _, err := frand.Read(cidIV[:]); err != nil {
+			return nil, fmt.Errorf("failed to generate random IV: %w", err)
+		}
 
 		block, err := aes.NewCipher(cidKey[:])
 		if err != nil {
