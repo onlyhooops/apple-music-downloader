@@ -27,6 +27,57 @@ import (
 	"github.com/fatih/color"
 )
 
+// cleanupEmptyAlbumFolders 清理只包含 cover.jpg 的空文件夹
+// 这些文件夹是由于音质标签不一致而产生的冗余文件夹
+func cleanupEmptyAlbumFolders(baseSaveFolder string) int {
+	cleanedCount := 0
+	filepath.Walk(baseSaveFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() || path == baseSaveFolder {
+			return nil
+		}
+
+		files, err := os.ReadDir(path)
+		if err != nil {
+			return nil
+		}
+
+		// 检查是否只包含 cover.jpg 或 folder.jpg
+		if len(files) == 0 {
+			// 空文件夹，删除
+			os.RemoveAll(path)
+			cleanedCount++
+		} else if len(files) == 1 {
+			fileName := files[0].Name()
+			if fileName == "cover.jpg" || fileName == "folder.jpg" {
+				// 只有封面图片，删除整个文件夹
+				os.RemoveAll(path)
+				cleanedCount++
+			}
+		} else if len(files) == 2 {
+			// 检查是否只有 cover.jpg 和 folder.jpg
+			hasCover := false
+			hasFolder := false
+			for _, f := range files {
+				if f.Name() == "cover.jpg" {
+					hasCover = true
+				} else if f.Name() == "folder.jpg" {
+					hasFolder = true
+				} else {
+					// 有其他文件，不是空文件夹
+					return nil
+				}
+			}
+			if hasCover && hasFolder {
+				// 只有两个封面图片，删除
+				os.RemoveAll(path)
+				cleanedCount++
+			}
+		}
+		return nil
+	})
+	return cleanedCount
+}
+
 // GetCacheBasePath 根据是否启用缓存返回基础路径
 // 返回值: (实际使用的路径, 最终目标路径, 是否使用缓存)
 func GetCacheBasePath(targetPath, albumId string) (string, string, bool) {
@@ -572,17 +623,37 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	var Quality string
 
-	// Determine Album Quality Tag based on download mode
-	// This will be refined later with actual audio information
+	// Pre-detect album quality by checking all tracks' audio traits
+	// This ensures we use the correct tag from the start, avoiding duplicate folders
+	isHires := false
+	isLossless := false
+	if !core.Dl_atmos && !core.Dl_aac {
+		for _, track := range meta.Data[0].Relationships.Tracks.Data {
+			if utils.Contains(track.Attributes.AudioTraits, "hi-res-lossless") {
+				isHires = true
+				break
+			}
+			if utils.Contains(track.Attributes.AudioTraits, "lossless") {
+				isLossless = true
+			}
+		}
+	}
+
+	// Determine Album Quality Tag based on download mode and actual audio traits
 	var Album_Tag_string string
 	if core.Dl_atmos {
 		Album_Tag_string = utils.FormatQualityTag("Dolby Atmos")
 	} else if core.Dl_aac {
 		Album_Tag_string = utils.FormatQualityTag("Aac 256")
 	} else {
-		// For lossless, we'll determine Hi-Res vs ALAC later based on sample rate
-		// For now, use a default that will be updated
-		Album_Tag_string = utils.FormatQualityTag("Alac")
+		// Use pre-detected quality information
+		if isHires {
+			Album_Tag_string = utils.FormatQualityTag("Hi-Res Lossless")
+		} else if isLossless {
+			Album_Tag_string = utils.FormatQualityTag("Alac")
+		} else {
+			Album_Tag_string = utils.FormatQualityTag("Aac 256")
+		}
 	}
 
 	if strings.Contains(albumId, "pl.") {
@@ -697,8 +768,9 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 
 	albumQualityType := "AAC"
 	albumQualityString := "AAC"
-	isHires := false
-	isLossless := false
+	// isHires and isLossless already declared earlier, just reset them
+	isHires = false
+	isLossless = false
 
 	for _, trackIndex := range selected {
 		track := meta.Data[0].Relationships.Tracks.Data[trackIndex-1]
@@ -1008,7 +1080,8 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 							}
 						}
 
-						tagErr := metadata.WriteMP4Tags(trackPath, finalLrc, meta, trackIndexInMeta, len(meta.Data[0].Relationships.Tracks.Data))
+						// 使用带自动修复功能的标签写入
+						tagErr := metadata.WriteMP4TagsWithRetry(trackPath, finalLrc, meta, trackIndexInMeta, len(meta.Data[0].Relationships.Tracks.Data))
 						if tagErr != nil {
 							postDownloadError = fmt.Errorf("标签写入失败: %w", tagErr)
 						}
@@ -1092,14 +1165,14 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 					if walkErr != nil || cachePath == cacheHashDir {
 						return nil
 					}
-					
+
 					relPath, err := filepath.Rel(cacheHashDir, cachePath)
 					if err != nil {
 						return nil
 					}
-					
+
 					targetPath := filepath.Join(finalSaveFolder, relPath)
-					
+
 					if info.IsDir() {
 						os.MkdirAll(targetPath, info.Mode())
 					} else if strings.HasSuffix(cachePath, ".m4a") || strings.HasSuffix(cachePath, ".jpg") {
@@ -1222,6 +1295,13 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		if err := utils.CleanupCacheDirectory(cacheHashDir); err != nil {
 			fmt.Printf("清理缓存目录警告: %v\n", err)
 		}
+	}
+
+	// 清理只包含封面图片的空文件夹（由于音质标签不一致产生的冗余文件夹）
+	cleanedCount := cleanupEmptyAlbumFolders(finalSaveFolder)
+	if cleanedCount > 0 {
+		cyan := color.New(color.FgCyan).SprintFunc()
+		fmt.Printf("%s\n", cyan(fmt.Sprintf("🧹 已清理 %d 个冗余空文件夹", cleanedCount)))
 	}
 
 	downloadSuccess = true
