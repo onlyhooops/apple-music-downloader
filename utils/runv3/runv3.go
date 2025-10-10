@@ -72,11 +72,23 @@ func getPSSH(contentId string, kidBase64 string) (string, error) {
 }
 func BeforeRequest(cl *requests.Client, preCtx context.Context, method string, href string, options ...requests.RequestOption) (resp *requests.Response, err error) {
 	data := options[0].Data
+
+	// 安全地从 context 中获取值
+	pssh, ok := preCtx.Value(psshContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("pssh not found in context or invalid type")
+	}
+
+	adamId, ok := preCtx.Value(adamIdContextKey).(string)
+	if !ok {
+		return nil, fmt.Errorf("adamId not found in context or invalid type")
+	}
+
 	jsondata := map[string]interface{}{
 		"challenge":      base64.StdEncoding.EncodeToString(data.([]byte)),
 		"key-system":     "com.widevine.alpha",
-		"uri":            "data:;base64," + preCtx.Value("pssh").(string),
-		"adamId":         preCtx.Value("adamId").(string),
+		"uri":            "data:;base64," + pssh,
+		"adamId":         adamId,
 		"isLibrary":      false,
 		"user-initiated": true,
 	}
@@ -228,10 +240,12 @@ func extractKidBase64(b string, mvmode bool) (string, string, error) {
 func extsong(b string) bytes.Buffer {
 	resp, err := http.Get(b)
 	if err != nil {
-		fmt.Printf("下载文件失败: %v\n", err)
+		// 静默处理错误，不干扰UI
 	}
 	defer resp.Body.Close()
 	var buffer bytes.Buffer
+
+	// 将进度条输出重定向到 io.Discard，避免干扰UI系统
 	bar := progressbar.NewOptions64(
 		resp.ContentLength,
 		progressbar.OptionClearOnFinish(),
@@ -242,6 +256,7 @@ func extsong(b string) bytes.Buffer {
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetDescription("Downloading..."),
+		progressbar.OptionSetWriter(io.Discard), // 禁用输出
 		progressbar.OptionSetTheme(progressbar.Theme{
 			Saucer:        "",
 			SaucerHead:    "",
@@ -311,17 +326,16 @@ func Run(adamId string, trackpath string, authtoken string, mutoken string, mvmo
 		return keyAndUrls, nil
 	}
 	body := extsong(fileurl)
-	fmt.Print("Downloaded\n")
+	// 静默下载，不打印以避免干扰UI系统
 	//bodyReader := bytes.NewReader(body)
 	var buffer bytes.Buffer
 
 	err = DecryptMP4(&body, keybt, &buffer)
 	if err != nil {
-		fmt.Print("Decryption failed\n")
+		// 静默处理解密错误，不干扰UI
 		return "", err
-	} else {
-		fmt.Print("Decrypted\n")
 	}
+	// 解密成功，静默继续
 	// create output file
 	ofh, err := os.Create(trackpath)
 	if err != nil {
@@ -504,6 +518,7 @@ func ExtMvDataWithDesc(keyAndUrls string, savePath string, description string) e
 	}
 
 	// 初始化进度条（简洁模式：只显示文本信息，不显示图形条）
+	// 输出重定向到 io.Discard 避免干扰UI系统
 	var bar *progressbar.ProgressBar
 	if totalSize > 0 {
 		bar = progressbar.NewOptions64(
@@ -511,10 +526,8 @@ func ExtMvDataWithDesc(keyAndUrls string, savePath string, description string) e
 			progressbar.OptionSetDescription(desc),
 			progressbar.OptionShowBytes(true),
 			progressbar.OptionShowCount(),
-			progressbar.OptionSetWidth(0), // 0 = 不显示进度条图形
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintf(os.Stderr, "\n") // 完成后换行，保留显示
-			}),
+			progressbar.OptionSetWidth(0),           // 0 = 不显示进度条图形
+			progressbar.OptionSetWriter(io.Discard), // 禁用输出，避免干扰UI
 			progressbar.OptionThrottle(100*time.Millisecond),
 		)
 	} else {
@@ -524,10 +537,8 @@ func ExtMvDataWithDesc(keyAndUrls string, savePath string, description string) e
 			progressbar.OptionSetDescription(desc),
 			progressbar.OptionShowBytes(true),
 			progressbar.OptionShowCount(),
-			progressbar.OptionSetWidth(0), // 0 = 不显示进度条图形
-			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintf(os.Stderr, "\n") // 完成后换行，保留显示
-			}),
+			progressbar.OptionSetWriter(io.Discard), // 禁用输出，避免干扰UI
+			progressbar.OptionSetWidth(0),           // 0 = 不显示进度条图形
 			progressbar.OptionThrottle(100*time.Millisecond),
 		)
 	}
