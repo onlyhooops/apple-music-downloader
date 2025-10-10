@@ -64,6 +64,9 @@ type ConfigSet struct {
 	CacheFolder             string    `yaml:"cache-folder"`
 	BatchSize               int       `yaml:"batch-size"` // 分批处理的批次大小，0表示不分批
 	SkipExistingValidation  bool      `yaml:"skip-existing-validation"` // 自动跳过已存在文件的校验
+	WorkRestEnabled         bool      `yaml:"work-rest-enabled"` // 启用工作-休息循环
+	WorkDurationMinutes     int       `yaml:"work-duration-minutes"` // 工作时长（分钟）
+	RestDurationMinutes     int       `yaml:"rest-duration-minutes"` // 休息时长（分钟）
 }
 
 // TrackBatch 表示一个曲目批次

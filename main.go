@@ -304,35 +304,73 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 
 	// 初始化历史记录系统
 	var task *history.TaskHistory
-	var completedURLs map[string]bool
 	if isBatch && taskFile != "" {
 		// 初始化历史记录目录
 		if err := history.InitHistory(); err != nil {
 			core.SafePrintf("⚠️  初始化历史记录失败: %v\n", err)
 		}
 
-		// 检查历史记录，获取已完成的URL
+		// 检查历史记录，获取已完成的记录（包含音质信息）
 		var err error
-		completedURLs, err = history.GetCompletedURLs(taskFile)
+		completedRecords, err := history.GetCompletedRecords(taskFile)
 		if err != nil {
 			core.SafePrintf("⚠️  读取历史记录失败: %v\n", err)
-			completedURLs = make(map[string]bool)
+			completedRecords = make(map[string]*history.DownloadRecord)
 		}
 
-		// 过滤已完成的URL
+		// 获取当前音质哈希
+		currentQualityHash := history.GetQualityHash(
+			core.Config.GetM3u8Mode,
+			core.Config.AacType,
+			core.Config.AlacMax,
+			core.Config.AtmosMax,
+		)
+
+		// 过滤已完成的URL（支持音质参数对比）
 		skippedCount := 0
+		qualityChangedCount := 0
 		var remainingUrls []string
+
 		for _, url := range finalUrls {
-			if completedURLs[url] {
-				skippedCount++
+			if oldRecord, exists := completedRecords[url]; exists {
+				// URL在历史记录中存在
+
+				if oldRecord.QualityHash == "" {
+					// 旧版本历史记录（无音质哈希），默认跳过
+					skippedCount++
+				} else if oldRecord.QualityHash == currentQualityHash {
+					// 音质参数相同，跳过
+					skippedCount++
+				} else {
+					// 音质参数不同，标记为需要重新下载
+					qualityChangedCount++
+					remainingUrls = append(remainingUrls, url)
+				}
 			} else {
+				// 新链接
 				remainingUrls = append(remainingUrls, url)
 			}
 		}
 
-		if skippedCount > 0 {
-			core.SafePrintf("📜 历史记录检测: 发现 %d 个已完成的任务\n", skippedCount)
-			core.SafePrintf("⏭️  已自动跳过，剩余 %d 个任务\n\n", len(remainingUrls))
+		if skippedCount > 0 || qualityChangedCount > 0 {
+			core.SafePrintf("📜 历史记录检测: 发现 %d 个已完成的任务\n", skippedCount+qualityChangedCount)
+			if qualityChangedCount > 0 {
+				core.SafePrintf("🔄 音质变化检测: 发现 %d 个任务音质已变化，将重新下载\n", qualityChangedCount)
+				core.SafePrintf("   旧音质配置 → 新音质配置:\n")
+
+				// 显示第一个音质变化的详细信息作为示例
+				for _, url := range finalUrls {
+					if oldRecord, exists := completedRecords[url]; exists && oldRecord.QualityHash != "" && oldRecord.QualityHash != currentQualityHash {
+						core.SafePrintf("   - alac-max: %d → %d\n", oldRecord.AlacMax, core.Config.AlacMax)
+						core.SafePrintf("   - atmos-max: %d → %d\n", oldRecord.AtmosMax, core.Config.AtmosMax)
+						core.SafePrintf("   - get-m3u8-mode: %s → %s\n", oldRecord.GetM3u8Mode, core.Config.GetM3u8Mode)
+						core.SafePrintf("   - aac-type: %s → %s\n", oldRecord.AacType, core.Config.AacType)
+						break
+					}
+				}
+			}
+			core.SafePrintf("⏭️  已自动跳过 %d 个，剩余 %d 个任务\n\n", skippedCount, len(remainingUrls))
+
 			finalUrls = remainingUrls
 			totalTasks = len(finalUrls)
 
@@ -368,6 +406,17 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 
 	// 批量模式：串行执行（按链接顺序依次下载）
 	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
+	
+	// 工作-休息循环机制
+	var workStartTime time.Time
+	if isBatch && core.Config.WorkRestEnabled {
+		workStartTime = time.Now()
+		core.SafePrintf("⏰ 工作-休息循环已启用: 工作 %d 分钟，休息 %d 分钟\n", 
+			core.Config.WorkDurationMinutes, 
+			core.Config.RestDurationMinutes)
+		core.SafePrintf("⏱️  工作开始时间: %s\n\n", workStartTime.Format("15:04:05"))
+	}
+	
 	for i, urlToProcess := range finalUrls {
 		albumId, albumName, err := processURL(urlToProcess, nil, nil, i+1, totalTasks)
 
@@ -387,12 +436,79 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				Status:     status,
 				DownloadAt: time.Now(),
 				ErrorMsg:   errorMsg,
+
+				// 音质参数
+				QualityHash: history.GetQualityHash(
+					core.Config.GetM3u8Mode,
+					core.Config.AacType,
+					core.Config.AlacMax,
+					core.Config.AtmosMax,
+				),
+				GetM3u8Mode: core.Config.GetM3u8Mode,
+				AacType:     core.Config.AacType,
+				AlacMax:     core.Config.AlacMax,
+				AtmosMax:    core.Config.AtmosMax,
 			})
 		}
 
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
 			core.SafePrintf("\n%s\n\n", strings.Repeat("=", 80))
+		}
+		
+		// 工作-休息循环检查（在任务完成后）
+		if isBatch && core.Config.WorkRestEnabled && i < len(finalUrls)-1 {
+			elapsed := time.Since(workStartTime)
+			workDuration := time.Duration(core.Config.WorkDurationMinutes) * time.Minute
+			
+			if elapsed >= workDuration {
+				// 工作时间已到，需要休息
+				restDuration := time.Duration(core.Config.RestDurationMinutes) * time.Minute
+				
+				cyan := color.New(color.FgCyan, color.Bold)
+				yellow := color.New(color.FgYellow)
+				green := color.New(color.FgGreen)
+				
+				core.SafePrintf("\n")
+				core.SafePrintf(strings.Repeat("=", 80) + "\n")
+				cyan.Printf("⏸️  工作时长已达 %d 分钟，进入休息时间\n", core.Config.WorkDurationMinutes)
+				yellow.Printf("😴 休息 %d 分钟...\n", core.Config.RestDurationMinutes)
+				core.SafePrintf("📊 已完成: %d/%d 个任务\n", i+1, totalTasks)
+				core.SafePrintf("⏰ 当前时间: %s\n", time.Now().Format("15:04:05"))
+				core.SafePrintf("⏱️  预计恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
+				core.SafePrintf(strings.Repeat("=", 80) + "\n\n")
+				
+				// 休息倒计时（每30秒提示一次）
+				restTicker := time.NewTicker(30 * time.Second)
+				restTimer := time.NewTimer(restDuration)
+				restStartTime := time.Now()
+				
+				restDone := false
+				for !restDone {
+					select {
+					case <-restTimer.C:
+						// 休息时间结束
+						restDone = true
+					case <-restTicker.C:
+						// 显示剩余时间
+						remainingTime := restDuration - time.Since(restStartTime)
+						if remainingTime > 0 {
+							core.SafePrintf("⏳ 休息中... 剩余时间: %.0f 分钟 %.0f 秒\n", 
+								remainingTime.Minutes(), 
+								remainingTime.Seconds()-remainingTime.Minutes()*60)
+						}
+					}
+				}
+				restTicker.Stop()
+				
+				// 休息结束，重新开始计时
+				workStartTime = time.Now()
+				core.SafePrintf("\n")
+				core.SafePrintf(strings.Repeat("=", 80) + "\n")
+				green.Printf("✅ 休息完毕，继续下载任务！\n")
+				core.SafePrintf("⏱️  新一轮工作开始时间: %s\n", workStartTime.Format("15:04:05"))
+				core.SafePrintf(strings.Repeat("=", 80) + "\n\n")
+			}
 		}
 	}
 

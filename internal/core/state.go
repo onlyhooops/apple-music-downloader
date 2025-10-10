@@ -181,6 +181,18 @@ func LoadConfig(configPath string) error {
 		fmt.Println(green("📌 'batch-size' 设置为负数，已调整为 0（禁用分批，一次性处理）"))
 	}
 
+	// 设置工作-休息循环默认值
+	if Config.WorkRestEnabled {
+		if Config.WorkDurationMinutes <= 0 {
+			Config.WorkDurationMinutes = 5
+			fmt.Println(green("📌 配置文件中未设置 'work-duration-minutes'，自动设为默认值 5 分钟"))
+		}
+		if Config.RestDurationMinutes <= 0 {
+			Config.RestDurationMinutes = 1
+			fmt.Println(green("📌 配置文件中未设置 'rest-duration-minutes'，自动设为默认值 1 分钟"))
+		}
+	}
+
 	return nil
 }
 
