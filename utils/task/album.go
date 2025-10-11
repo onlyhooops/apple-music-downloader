@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/olekukonko/tablewriter"
 
+	"main/internal/logger"
 	"main/utils/ampapi"
 )
 
@@ -132,17 +133,17 @@ func (a *Album) ShowSelect() []int {
 	}
 	//table.AppendBulk(data)
 	table.Render()
-	fmt.Println("Please select from the track options above (multiple options separated by commas, ranges supported, or type 'all' to select all)")
+	logger.Info("Please select from the track options above (multiple options separated by commas, ranges supported, or type 'all' to select all)")
 	cyanColor := color.New(color.FgCyan)
 	cyanColor.Print("select: ")
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("读取输入错误: %v", err)
 	}
 	input = strings.TrimSpace(input)
 	if input == "all" {
-		fmt.Println("You have selected all options:")
+		logger.Info("You have selected all options:")
 		selected = arr
 	} else {
 		selectedOptions := [][]string{}
@@ -160,24 +161,24 @@ func (a *Album) ShowSelect() []int {
 			if len(opt) == 1 { // Single option
 				num, err := strconv.Atoi(opt[0])
 				if err != nil {
-					fmt.Println("Invalid option:", opt[0])
+					logger.Warn("Invalid option: %s", opt[0])
 					continue
 				}
 				if num > 0 && num <= len(arr) {
 					selected = append(selected, num)
 					//args = append(args, urls[num-1])
 				} else {
-					fmt.Println("Option out of range:", opt[0])
+					logger.Warn("Option out of range: %s", opt[0])
 				}
 			} else if len(opt) == 2 { // Range
 				start, err1 := strconv.Atoi(opt[0])
 				end, err2 := strconv.Atoi(opt[1])
 				if err1 != nil || err2 != nil {
-					fmt.Println("Invalid range:", opt)
+					logger.Warn("Invalid range: %v", opt)
 					continue
 				}
 				if start < 1 || end > len(arr) || start > end {
-					fmt.Println("Range out of range:", opt)
+					logger.Warn("Range out of range: %v", opt)
 					continue
 				}
 				for i := start; i <= end; i++ {
@@ -185,7 +186,7 @@ func (a *Album) ShowSelect() []int {
 					selected = append(selected, i)
 				}
 			} else {
-				fmt.Println("Invalid option:", opt)
+				logger.Warn("Invalid option: %v", opt)
 			}
 		}
 	}
