@@ -6,7 +6,6 @@ import (
 	"main/internal/logger"
 	"main/utils/structs"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -93,112 +92,26 @@ func PrintUI(isFirstUpdate bool) {
 		builder.WriteString(strings.Repeat("\n", len(core.TrackStatuses)))
 	}
 
+	// 向上移动N行（N = 曲目数）
+	// 新的formatter保证每个track只占一行，不会换行
 	builder.WriteString(fmt.Sprintf("\033[%dA", len(core.TrackStatuses)))
 
-	// 动态获取终端宽度，确保内容不会因换行而产生额外的行
+	// 获取终端宽度，用于智能格式化
 	terminalWidth := getTerminalWidth()
-	colorRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
 
+	// 使用新的智能格式化系统
 	for _, ts := range core.TrackStatuses {
-		displayName := ts.TrackName
-		statusStrWithColor := ts.StatusColor(ts.Status)
-		plainStatusStr := colorRegex.ReplaceAllString(statusStrWithColor, "")
+		// 1. 格式化曲目行（自动适应终端宽度，保证不换行）
+		line := FormatTrackLine(ts, terminalWidth)
 
-		// 智能分级显示：根据终端宽度选择不同的显示格式
-		var line string
-		var prefixStr string
-		var qualityStr string
+		// 2. 应用颜色到状态部分（保持向后兼容）
+		// 注意：新格式化器已经简化了状态，这里的颜色主要用于整行
+		coloredLine := ts.StatusColor(line)
 
-		// 级别1：完整格式 (需要至少60字符)
-		// Track 1 of 14: SongName (24bit/96.0kHz) - Status
-		if terminalWidth >= 60 {
-			prefixStr = fmt.Sprintf("Track %d of %d: ", ts.TrackNum, ts.TrackTotal)
-			qualityStr = ts.Quality
-
-			prefixRunes := len([]rune(prefixStr))
-			suffixRunes := len([]rune(qualityStr)) + len([]rune(" - ")) + len([]rune(plainStatusStr))
-			availableRunesForName := terminalWidth - prefixRunes - suffixRunes - 1
-
-			if availableRunesForName < 10 {
-				availableRunesForName = 10
-			}
-
-			displayNameRunes := []rune(displayName)
-			if len(displayNameRunes) > availableRunesForName {
-				if availableRunesForName > 3 {
-					displayName = string(displayNameRunes[:availableRunesForName-3]) + "..."
-				} else {
-					displayName = "..."
-				}
-			}
-
-			line = fmt.Sprintf("%s%s %s - %s", prefixStr, displayName, qualityStr, statusStrWithColor)
-
-			// 级别2：紧凑格式，去掉音质信息 (需要至少40字符)
-			// Track 1 of 14: SongName - Status
-		} else if terminalWidth >= 40 {
-			prefixStr = fmt.Sprintf("Track %d of %d: ", ts.TrackNum, ts.TrackTotal)
-
-			prefixRunes := len([]rune(prefixStr))
-			suffixRunes := len([]rune(" - ")) + len([]rune(plainStatusStr))
-			availableRunesForName := terminalWidth - prefixRunes - suffixRunes - 1
-
-			if availableRunesForName < 8 {
-				availableRunesForName = 8
-			}
-
-			displayNameRunes := []rune(displayName)
-			if len(displayNameRunes) > availableRunesForName {
-				if availableRunesForName > 3 {
-					displayName = string(displayNameRunes[:availableRunesForName-3]) + "..."
-				} else {
-					displayName = "..."
-				}
-			}
-
-			line = fmt.Sprintf("%s%s - %s", prefixStr, displayName, statusStrWithColor)
-
-			// 级别3：极简格式 (需要至少25字符)
-			// [1/14] SongName - Status
-		} else if terminalWidth >= 25 {
-			prefixStr = fmt.Sprintf("[%d/%d] ", ts.TrackNum, ts.TrackTotal)
-
-			prefixRunes := len([]rune(prefixStr))
-			suffixRunes := len([]rune(" - ")) + len([]rune(plainStatusStr))
-			availableRunesForName := terminalWidth - prefixRunes - suffixRunes - 1
-
-			if availableRunesForName < 5 {
-				availableRunesForName = 5
-			}
-
-			displayNameRunes := []rune(displayName)
-			if len(displayNameRunes) > availableRunesForName {
-				if availableRunesForName > 3 {
-					displayName = string(displayNameRunes[:availableRunesForName-3]) + "..."
-				} else {
-					displayName = "..."
-				}
-			}
-
-			line = fmt.Sprintf("%s%s - %s", prefixStr, displayName, statusStrWithColor)
-
-			// 级别4：最小格式 (宽度小于25字符)
-			// [1/14] Status
-		} else {
-			prefixStr = fmt.Sprintf("[%d/%d] ", ts.TrackNum, ts.TrackTotal)
-			line = fmt.Sprintf("%s%s", prefixStr, statusStrWithColor)
-		}
-
-		// 使用 \r\033[K 清除当前行，然后打印内容
-		// 最后做一次安全检查，确保不超过终端宽度
-		lineRunes := []rune(colorRegex.ReplaceAllString(line, ""))
-		if len(lineRunes) > terminalWidth {
-			// 如果仍然超过（理论上不应该发生），强制截断
-			line = string([]rune(line)[:terminalWidth-3]) + "..."
-		}
-
-		builder.WriteString(fmt.Sprintf("\r\033[K%s\n", line))
+		// 3. 输出：清除当前行 + 打印新内容 + 换行
+		builder.WriteString(fmt.Sprintf("\r\033[K%s\n", coloredLine))
 	}
+
 	fmt.Print(builder.String()) // OK: UI渲染核心，必须使用fmt.Print输出到stdout
 }
 
