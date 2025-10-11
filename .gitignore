@@ -22,3 +22,12 @@
 !internal/*
 !config.yaml
 !config.yaml.example
+!Makefile
+!scripts/*
+!test/*
+!baseline_status.txt
+!baseline_bench.txt
+!UI与LOG模块彻底重构方案.md
+!UI_LOG_ARCHITECTURE_ANALYSIS.md
+!REFACTOR_UPDATES_SUMMARY.md
+!REFACTOR_TODO.md

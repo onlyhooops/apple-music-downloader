@@ -1,0 +1,19 @@
+Apple Music Downloader - 重构前基线状态
+
+记录时间: 2025-10-11
+分支: feature/ui-log-refactor
+可执行文件: apple-music-downloader-baseline (38MB)
+
+当前已知问题:
+1. utils/runv3/key/key.go: slog.Error参数格式问题（4处）
+2. main.go: non-constant format string in SafePrintf（4处）
+
+这些问题将在Phase 1日志重构中解决。
+
+基线功能:
+- 可正常编译
+- 可执行文件已保存
+- 准备开始重构
+
+下一步: 创建测试目录和验证脚本
+
