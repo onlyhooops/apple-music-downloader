@@ -16,6 +16,7 @@ import (
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/history"
+	"main/internal/logger"
 	"main/internal/parser"
 
 	"github.com/fatih/color"
@@ -593,6 +594,17 @@ func main() {
 			return
 		}
 		fmt.Printf("加载配置文件 %s 失败: %v\n", core.ConfigPath, err)
+		return
+	}
+
+	// 初始化logger系统
+	loggerCfg := logger.Config{
+		Level:         core.Config.Logging.Level,
+		Output:        core.Config.Logging.Output,
+		ShowTimestamp: core.Config.Logging.ShowTimestamp,
+	}
+	if err := logger.InitFromConfig(loggerCfg); err != nil {
+		fmt.Printf("初始化logger失败: %v\n", err)
 		return
 	}
 
