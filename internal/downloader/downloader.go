@@ -981,11 +981,14 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 			}
 		}
 
-		doneUI := make(chan struct{})
-		// 只有在未禁用动态UI时才启动UI渲染
-		if !core.DisableDynamicUI {
-			go ui.RenderUI(doneUI)
-		}
+	doneUI := make(chan struct{})
+	// 只有在未禁用动态UI时才启动UI渲染
+	if !core.DisableDynamicUI {
+		// 动态UI期间：将logger输出重定向到stderr，避免干扰光标定位
+		// UI使用stdout输出（带光标移动），logger使用stderr，互不干扰
+		logger.SetOutput(os.Stderr)
+		go ui.RenderUI(doneUI)
+	}
 
 		var wg sync.WaitGroup
 		semaphore := make(chan struct{}, numThreads)
@@ -1175,10 +1178,15 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 			}(trackNum, i)
 		}
 
-		wg.Wait()
-		close(doneUI)
-		time.Sleep(200 * time.Millisecond)
-		ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
+	wg.Wait()
+	close(doneUI)
+	time.Sleep(200 * time.Millisecond)
+	ui.PrintUI(false) // 批次完成后的最后一次打印，非首次更新
+	
+	// UI结束后：恢复logger输出到stdout
+	if !core.DisableDynamicUI {
+		logger.SetOutput(os.Stdout)
+	}
 
 		// 如果使用了缓存，批次完成后立即转移文件（多批次且不是最后一批）
 		if usingCache && batch.TotalBatches > 1 && !batch.IsLast {
