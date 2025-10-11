@@ -67,6 +67,14 @@ type ConfigSet struct {
 	WorkRestEnabled         bool      `yaml:"work-rest-enabled"` // 启用工作-休息循环
 	WorkDurationMinutes     int       `yaml:"work-duration-minutes"` // 工作时长（分钟）
 	RestDurationMinutes     int       `yaml:"rest-duration-minutes"` // 休息时长（分钟）
+	Logging                 LoggingConfig `yaml:"logging"` // 日志配置
+}
+
+// LoggingConfig 日志配置
+type LoggingConfig struct {
+	Level         string `yaml:"level"`          // 日志等级: debug/info/warn/error
+	Output        string `yaml:"output"`         // 输出目标: stdout/stderr/文件路径
+	ShowTimestamp bool   `yaml:"show_timestamp"` // 是否显示时间戳
 }
 
 // TrackBatch 表示一个曲目批次
