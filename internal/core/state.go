@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"main/internal/logger"
 	"main/utils/structs"
 	"os"
 	"regexp"
@@ -104,24 +105,24 @@ func LoadConfig(configPath string) error {
 
 	if Config.TxtDownloadThreads <= 0 {
 		Config.TxtDownloadThreads = 5
-		fmt.Println(green("📌 配置文件中未设置 'txtDownloadThreads'，自动设为默认值 5"))
+		logger.Info(green("📌 配置文件中未设置 'txtDownloadThreads'，自动设为默认值 5"))
 	}
 
 	if Config.BufferSizeKB <= 0 {
 		Config.BufferSizeKB = 4096
-		fmt.Println(green("📌 配置文件中未设置 'BufferSizeKB'，自动设为默认值 4096KB (4MB)"))
+		logger.Info(green("📌 配置文件中未设置 'BufferSizeKB'，自动设为默认值 4096KB (4MB)"))
 	}
 
 	if Config.NetworkReadBufferKB <= 0 {
 		Config.NetworkReadBufferKB = 4096
-		fmt.Println(green("📌 配置文件中未设置 'NetworkReadBufferKB'，自动设为默认值 4096KB (4MB)"))
+		logger.Info(green("📌 配置文件中未设置 'NetworkReadBufferKB'，自动设为默认值 4096KB (4MB)"))
 	}
 
 	useAutoDetect := true
 	if Config.MaxPathLength > 0 {
 		MaxPathLength = Config.MaxPathLength
 		useAutoDetect = false
-		fmt.Printf("%s%s\n",
+		logger.Info("%s%s",
 			green("📌 从配置文件强制使用最大路径长度限制: "),
 			red(fmt.Sprintf("%d", MaxPathLength)),
 		)
@@ -130,13 +131,13 @@ func LoadConfig(configPath string) error {
 	if useAutoDetect {
 		if runtime.GOOS == "windows" {
 			MaxPathLength = 255
-			fmt.Printf("%s%d\n",
+			logger.Info("%s%d",
 				green("📌 检测到 Windows 系统, 已自动设置最大路径长度限制为: "),
 				MaxPathLength,
 			)
 		} else {
 			MaxPathLength = 4096
-			fmt.Printf("%s%s%s%d\n",
+			logger.Info("%s%s%s%d",
 				green("📌 检测到 "),
 				red(runtime.GOOS),
 				green(" 系统, 已自动设置最大路径长度限制为: "),
@@ -168,7 +169,7 @@ func LoadConfig(configPath string) error {
 
 	// 如果启用缓存，显示缓存配置信息
 	if Config.EnableCache {
-		fmt.Printf("%s%s\n",
+		logger.Info("%s%s",
 			green("📌 缓存中转机制已启用，缓存路径: "),
 			red(Config.CacheFolder),
 		)
@@ -177,21 +178,21 @@ func LoadConfig(configPath string) error {
 	// 设置分批下载默认值
 	if Config.BatchSize == 0 {
 		Config.BatchSize = 20
-		fmt.Println(green("📌 配置文件中未设置 'batch-size'，自动设为默认值 20（分批处理模式）"))
+		logger.Info(green("📌 配置文件中未设置 'batch-size'，自动设为默认值 20（分批处理模式）"))
 	} else if Config.BatchSize < 0 {
 		Config.BatchSize = 0
-		fmt.Println(green("📌 'batch-size' 设置为负数，已调整为 0（禁用分批，一次性处理）"))
+		logger.Info(green("📌 'batch-size' 设置为负数，已调整为 0（禁用分批，一次性处理）"))
 	}
 
 	// 设置工作-休息循环默认值
 	if Config.WorkRestEnabled {
 		if Config.WorkDurationMinutes <= 0 {
 			Config.WorkDurationMinutes = 5
-			fmt.Println(green("📌 配置文件中未设置 'work-duration-minutes'，自动设为默认值 5 分钟"))
+			logger.Info(green("📌 配置文件中未设置 'work-duration-minutes'，自动设为默认值 5 分钟"))
 		}
 		if Config.RestDurationMinutes <= 0 {
 			Config.RestDurationMinutes = 1
-			fmt.Println(green("📌 配置文件中未设置 'rest-duration-minutes'，自动设为默认值 1 分钟"))
+			logger.Info(green("📌 配置文件中未设置 'rest-duration-minutes'，自动设为默认值 1 分钟"))
 		}
 	}
 
@@ -212,8 +213,7 @@ func GetAccountForStorefront(storefront string) (*structs.Account, error) {
 
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
-	fmt.Printf(
-		"%s 未找到与 %s 匹配的账户,将尝试使用 %s 等区域进行下载\n",
+	logger.Warn("%s 未找到与 %s 匹配的账户,将尝试使用 %s 等区域进行下载",
 		red("警告:"),
 		red(storefront),
 		yellow(Config.Accounts[0].Name),
