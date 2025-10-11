@@ -41,7 +41,7 @@ func NewProgressAdapter(notifier *ProgressNotifier, trackIndex int, stage string
 // 适配器会在后台goroutine中将这些更新转换为ProgressEvent并通知监听器
 func (a *ProgressAdapter) ToChan() chan<- ProgressUpdate {
 	ch := make(chan ProgressUpdate, 10)
-	
+
 	// 启动后台goroutine转换进度更新
 	go func() {
 		for update := range ch {
@@ -49,23 +49,23 @@ func (a *ProgressAdapter) ToChan() chan<- ProgressUpdate {
 			a.mu.RLock()
 			currentStage := a.stage
 			a.mu.RUnlock()
-			
+
 			// 将旧格式转换为新格式
 			event := ProgressEvent{
 				TrackIndex: a.trackIndex,
 				Stage:      currentStage,
 				Percentage: update.Percentage,
 				SpeedBPS:   update.SpeedBPS,
-				Status:     "",     // 由UI监听器格式化
+				Status:     "", // 由UI监听器格式化
 				Error:      nil,
 				Metadata:   nil,
 			}
-			
+
 			// 通知所有监听器
 			a.notifier.Notify(event)
 		}
 	}()
-	
+
 	return ch
 }
 
@@ -82,7 +82,7 @@ func (a *ProgressAdapter) UpdateStage(newStage string) {
 // 专门用于适配runv14包的ProgressUpdate类型
 func (a *ProgressAdapter) ToRunv14Chan() chan<- runv14.ProgressUpdate {
 	ch := make(chan runv14.ProgressUpdate, 10)
-	
+
 	// 启动后台goroutine转换进度更新
 	go func() {
 		for update := range ch {
@@ -90,23 +90,23 @@ func (a *ProgressAdapter) ToRunv14Chan() chan<- runv14.ProgressUpdate {
 			a.mu.RLock()
 			currentStage := a.stage
 			a.mu.RUnlock()
-			
+
 			// 将runv14格式转换为Progress事件格式
 			event := ProgressEvent{
 				TrackIndex: a.trackIndex,
 				Stage:      currentStage,
 				Percentage: update.Percentage,
 				SpeedBPS:   update.SpeedBPS,
-				Status:     "",     // 由UI监听器格式化
+				Status:     "", // 由UI监听器格式化
 				Error:      nil,
 				Metadata:   nil,
 			}
-			
+
 			// 通知所有监听器
 			a.notifier.Notify(event)
 		}
 	}()
-	
+
 	return ch
 }
 
@@ -115,4 +115,3 @@ func (a *ProgressAdapter) ToRunv14Chan() chan<- runv14.ProgressUpdate {
 func (a *ProgressAdapter) Close(ch chan<- ProgressUpdate) {
 	close(ch)
 }
-
