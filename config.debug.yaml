@@ -1,0 +1,11 @@
+# Debug模式配置 - 显示所有日志
+# 使用方法: ./apple-music-downloader-v2.6.0-mvp --config config.debug.yaml <url>
+
+logging:
+  level: debug              # 显示所有日志（DEBUG/INFO/WARN/ERROR）
+  output: stdout            # 输出到控制台
+  show_timestamp: true      # 显示时间戳
+
+# 其他配置从主config.yaml继承
+# 仅用于测试Logger的DEBUG级别功能
+

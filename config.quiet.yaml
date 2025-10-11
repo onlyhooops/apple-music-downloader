@@ -1,0 +1,13 @@
+# Quiet模式配置 - 仅显示错误
+# 使用方法: ./apple-music-downloader-v2.6.0-mvp --config config.quiet.yaml <url>
+
+logging:
+  level: error              # 仅显示错误（ERROR）
+  output: stdout            # 输出到控制台
+  show_timestamp: false     # 不显示时间戳
+
+# 适用场景:
+# - CI/CD环境
+# - 静默运行
+# - 仅关注错误信息
+
