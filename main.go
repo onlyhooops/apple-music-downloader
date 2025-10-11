@@ -37,7 +37,7 @@ func handleSingleMV(urlRaw string) {
 	storefront, albumId := parser.CheckUrlMv(urlRaw)
 	accountForMV, err := core.GetAccountForStorefront(storefront)
 	if err != nil {
-		fmt.Printf("MV 下载失败: %v\n", err)
+		logger.Error("MV 下载失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
@@ -62,7 +62,7 @@ func handleSingleMV(urlRaw string) {
 
 	mvInfo, err := api.GetMVInfoFromAdam(albumId, accountForMV, storefront)
 	if err != nil {
-		fmt.Printf("获取 MV 信息失败: %v\n", err)
+		logger.Error("获取 MV 信息失败: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
@@ -113,7 +113,7 @@ func handleSingleMV(urlRaw string) {
 		// 移动文件
 		core.SafePrintf("\n📤 正在从缓存转移MV文件到目标位置...\n")
 		if moveErr := downloader.SafeMoveFile(mvOutPath, finalMvPath); moveErr != nil {
-			fmt.Printf("从缓存移动MV文件失败: %v\n", moveErr)
+			logger.Error("从缓存移动MV文件失败: %v", moveErr)
 			err = moveErr
 		} else {
 			core.SafePrintf("📥 MV文件转移完成！\n")
@@ -175,12 +175,12 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		tempStorefront, _ := parser.CheckUrlSong(urlRaw)
 		accountForSong, err := core.GetAccountForStorefront(tempStorefront)
 		if err != nil {
-			fmt.Printf("获取歌曲信息失败 for %s: %v\n", urlRaw, err)
+			logger.Error("获取歌曲信息失败 for %s: %v", urlRaw, err)
 			return "", "", err
 		}
 		urlRaw, err = api.GetUrlSong(urlRaw, accountForSong)
 		if err != nil {
-			fmt.Printf("获取歌曲链接失败 for %s: %v\n", urlRaw, err)
+			logger.Error("获取歌曲链接失败 for %s: %v", urlRaw, err)
 			return "", "", err
 		}
 		core.Dl_song = true
@@ -194,7 +194,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 
 	if albumId == "" {
 		err := fmt.Errorf("无效的URL")
-		fmt.Printf("无效的URL: %s\n", urlRaw)
+		logger.Warn("无效的URL: %s", urlRaw)
 		return "", "", err
 	}
 
@@ -297,7 +297,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	}
 
 	if len(finalUrls) == 0 {
-		fmt.Println("队列中没有有效的链接可供下载。")
+		logger.Warn("队列中没有有效的链接可供下载。")
 		return
 	}
 
@@ -565,22 +565,22 @@ func main() {
 
 	pflag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "用法: %s [选项] [url1 url2 ... | file.txt ...]\n", os.Args[0])
-		fmt.Println("如果没有提供URL或文件，程序将进入交互模式。")
-		fmt.Println()
-		fmt.Println("支持的启动方式:")
-		fmt.Println("  1. 交互模式: 运行程序后输入链接或TXT文件路径")
-		fmt.Println("  2. 单链接模式: ./程序名 <url>")
-		fmt.Println("  3. 多链接模式: ./程序名 <url1> <url2> ...")
-		fmt.Println("  4. TXT文件模式: ./程序名 <file.txt>")
-		fmt.Println("  5. 混合模式: ./程序名 <url1> <file.txt> <url2> ...")
-		fmt.Println()
-		fmt.Println("TXT文件格式:")
-		fmt.Println("  - 支持单行单链接（传统格式）")
-		fmt.Println("  - 支持单行多链接（空格分隔）")
-		fmt.Println("  - 支持注释行（以#开头）")
-		fmt.Println("  - 空行会被自动跳过")
-		fmt.Println()
-		fmt.Println("选项:")
+		logger.Info("如果没有提供URL或文件，程序将进入交互模式。")
+		logger.Info("")
+		logger.Info("支持的启动方式:")
+		logger.Info("  1. 交互模式: 运行程序后输入链接或TXT文件路径")
+		logger.Info("  2. 单链接模式: ./程序名 <url>")
+		logger.Info("  3. 多链接模式: ./程序名 <url1> <url2> ...")
+		logger.Info("  4. TXT文件模式: ./程序名 <file.txt>")
+		logger.Info("  5. 混合模式: ./程序名 <url1> <file.txt> <url2> ...")
+		logger.Info("")
+		logger.Info("TXT文件格式:")
+		logger.Info("  - 支持单行单链接（传统格式）")
+		logger.Info("  - 支持单行多链接（空格分隔）")
+		logger.Info("  - 支持注释行（以#开头）")
+		logger.Info("  - 空行会被自动跳过")
+		logger.Info("")
+		logger.Info("选项:")
 		pflag.PrintDefaults()
 	}
 
@@ -589,10 +589,12 @@ func main() {
 	err := core.LoadConfig(core.ConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) && core.ConfigPath == "config.yaml" {
+			// logger还未初始化，使用fmt
 			fmt.Println("错误: 默认配置文件 config.yaml 未找到。")
 			pflag.Usage()
 			return
 		}
+		// logger还未初始化，使用fmt
 		fmt.Printf("加载配置文件 %s 失败: %v\n", core.ConfigPath, err)
 		return
 	}
@@ -604,6 +606,7 @@ func main() {
 		ShowTimestamp: core.Config.Logging.ShowTimestamp,
 	}
 	if err := logger.InitFromConfig(loggerCfg); err != nil {
+		// 这里不能用logger.Error，因为logger初始化失败
 		fmt.Printf("初始化logger失败: %v\n", err)
 		return
 	}
@@ -618,7 +621,7 @@ func main() {
 		if len(core.Config.Accounts) > 0 && core.Config.Accounts[0].AuthorizationToken != "" && core.Config.Accounts[0].AuthorizationToken != "your-authorization-token" {
 			token = strings.Replace(core.Config.Accounts[0].AuthorizationToken, "Bearer ", "", -1)
 		} else {
-			fmt.Println("获取开发者 token 失败。")
+			logger.Error("获取开发者 token 失败。")
 			return
 		}
 	}
@@ -626,27 +629,27 @@ func main() {
 
 	args := pflag.Args()
 	if len(args) == 0 {
-		fmt.Print("请输入专辑链接或TXT文件路径: ")
+		logger.Info("请输入专辑链接或TXT文件路径: ")
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
 		input = strings.TrimSpace(input)
 
 		if input == "" {
-			fmt.Println("未输入内容，程序退出。")
+			logger.Info("未输入内容，程序退出。")
 			return
 		}
 
 		if strings.HasSuffix(strings.ToLower(input), ".txt") {
 			if _, err := os.Stat(input); err == nil {
-				urls, err := parseTxtFile(input)
-				if err != nil {
-					fmt.Printf("读取文件 %s 失败: %v\n", input, err)
-					return
-				}
-				fmt.Printf("📊 从文件 %s 中解析到 %d 个链接\n\n", input, len(urls))
+			urls, err := parseTxtFile(input)
+			if err != nil {
+				logger.Error("读取文件 %s 失败: %v", input, err)
+				return
+			}
+				logger.Info("📊 从文件 %s 中解析到 %d 个链接\n", input, len(urls))
 				runDownloads(urls, true, input)
 			} else {
-				fmt.Printf("错误: 文件不存在 %s\n", input)
+				logger.Error("错误: 文件不存在 %s", input)
 				return
 			}
 		} else {
@@ -662,12 +665,12 @@ func main() {
 			if strings.HasSuffix(strings.ToLower(arg), ".txt") {
 				// 参数是TXT文件
 				if _, err := os.Stat(arg); err == nil {
-					fileUrls, err := parseTxtFile(arg)
-					if err != nil {
-						fmt.Printf("读取文件 %s 失败: %v\n", arg, err)
-						continue
-					}
-					fmt.Printf("📊 从文件 %s 中解析到 %d 个链接\n", arg, len(fileUrls))
+				fileUrls, err := parseTxtFile(arg)
+				if err != nil {
+					logger.Error("读取文件 %s 失败: %v", arg, err)
+					continue
+				}
+					logger.Info("📊 从文件 %s 中解析到 %d 个链接", arg, len(fileUrls))
 					urls = append(urls, fileUrls...)
 					isBatch = true
 					// 记录第一个txt文件作为任务文件
@@ -675,7 +678,7 @@ func main() {
 						taskFile = arg
 					}
 				} else {
-					fmt.Printf("错误: 文件不存在 %s\n", arg)
+					logger.Error("错误: 文件不存在 %s", arg)
 				}
 			} else {
 				// 参数是URL
@@ -689,16 +692,16 @@ func main() {
 
 		if len(urls) > 0 {
 			if isBatch {
-				fmt.Println()
+				logger.Info("")
 			}
 			runDownloads(urls, isBatch, taskFile)
 		} else {
-			fmt.Println("没有有效的链接可供处理。")
+			logger.Warn("没有有效的链接可供处理。")
 		}
 	}
 
-	fmt.Printf("\n📦 已完成: %d/%d | 警告: %d | 错误: %d\n", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
+	logger.Info("\n📦 已完成: %d/%d | 警告: %d | 错误: %d", core.Counter.Success, core.Counter.Total, core.Counter.Unavailable+core.Counter.NotSong, core.Counter.Error)
 	if core.Counter.Error > 0 {
-		fmt.Println("部分任务在执行过程中出错，请检查上面的日志记录。")
+		logger.Warn("部分任务在执行过程中出错，请检查上面的日志记录。")
 	}
 }
