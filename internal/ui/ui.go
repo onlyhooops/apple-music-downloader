@@ -206,8 +206,12 @@ func UpdateStatus(index int, status string, sColor func(a ...interface{}) string
 	core.UiMutex.Lock()
 	defer core.UiMutex.Unlock()
 	if index < len(core.TrackStatuses) {
-		core.TrackStatuses[index].Status = status
-		core.TrackStatuses[index].StatusColor = sColor
+		// 去重：只有当状态真正改变时才更新
+		// 这避免了重复的进度更新导致日志刷屏
+		if core.TrackStatuses[index].Status != status {
+			core.TrackStatuses[index].Status = status
+			core.TrackStatuses[index].StatusColor = sColor
+		}
 	}
 }
 

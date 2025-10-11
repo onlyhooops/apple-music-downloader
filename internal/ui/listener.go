@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"main/internal/progress"
+	"sync"
 
 	"github.com/fatih/color"
 )
@@ -11,19 +12,37 @@ import (
 // 实现progress.ProgressListener接口
 // 将进度事件转换为UI更新
 type UIProgressListener struct {
-	// 可以添加需要的状态
+	mu           sync.RWMutex
+	lastStatus   map[int]string // 缓存每个track的最后状态，用于去重
 }
 
 // NewUIProgressListener 创建UI进度监听器
 func NewUIProgressListener() *UIProgressListener {
-	return &UIProgressListener{}
+	return &UIProgressListener{
+		lastStatus: make(map[int]string),
+	}
 }
 
 // OnProgress 处理进度更新事件
 func (l *UIProgressListener) OnProgress(event progress.ProgressEvent) {
 	status := formatStatus(event)
-	colorFunc := getColorFunc(event.Stage)
-	UpdateStatus(event.TrackIndex, status, colorFunc)
+	
+	// 去重：检查状态是否改变
+	l.mu.RLock()
+	lastStatus, exists := l.lastStatus[event.TrackIndex]
+	l.mu.RUnlock()
+	
+	// 只有当状态改变时才更新UI
+	if !exists || lastStatus != status {
+		// 更新缓存
+		l.mu.Lock()
+		l.lastStatus[event.TrackIndex] = status
+		l.mu.Unlock()
+		
+		// 更新UI
+		colorFunc := getColorFunc(event.Stage)
+		UpdateStatus(event.TrackIndex, status, colorFunc)
+	}
 }
 
 // OnComplete 处理完成事件
