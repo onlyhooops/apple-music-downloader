@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"main/internal/api"
 	"main/internal/core"
+	"main/internal/logger"
 	"main/internal/metadata"
 	"main/internal/parser"
 	"main/internal/ui"
@@ -1227,7 +1228,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		}
 	} // 批次循环结束
 
-	fmt.Println(strings.Repeat("-", 50))
+	logger.Info(strings.Repeat("-", 50))
 
 	// 如果使用了缓存，转移所有缓存文件到目标位置
 	if usingCache {
@@ -1249,7 +1250,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 		if err == nil && hasFilesToMove {
 			// 有文件需要转移
 			cyan := color.New(color.FgCyan).SprintFunc()
-			fmt.Printf("\n%s\n", cyan("📤 正在从缓存转移文件到目标位置..."))
+			logger.Info("\n%s", cyan("📤 正在从缓存转移文件到目标位置..."))
 
 			// 递归转移所有子目录
 			movedCount := 0
@@ -1284,7 +1285,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 						skippedCount++
 						// 静默跳过，不打印警告
 					} else {
-						fmt.Printf("警告: 转移文件失败 %s: %v\n", relPath, err)
+						logger.Warn("警告: 转移文件失败 %s: %v", relPath, err)
 					}
 				} else {
 					movedCount++
@@ -1293,20 +1294,20 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 			})
 
 			if moveErr != nil {
-				fmt.Printf("警告: 转移文件过程出现错误: %v\n", moveErr)
+				logger.Warn("警告: 转移文件过程出现错误: %v", moveErr)
 			} else {
 				msg := fmt.Sprintf("📥 文件转移完成！（新增 %d 个，跳过 %d 个）", movedCount, skippedCount)
-				fmt.Printf("%s\n", color.New(color.FgGreen).SprintFunc()(msg))
+				logger.Info("%s", color.New(color.FgGreen).SprintFunc()(msg))
 			}
 		} else {
 			// 所有文件都已存在，只是校验
 			green := color.New(color.FgGreen).SprintFunc()
-			fmt.Printf("\n%s\n", green("📥 本地文件校验完成！"))
+			logger.Info("\n%s", green("📥 本地文件校验完成！"))
 		}
 
 		// 清理缓存hash目录（无论成功失败都清理）
 		if err := utils.CleanupCacheDirectory(cacheHashDir); err != nil {
-			fmt.Printf("清理缓存目录警告: %v\n", err)
+			logger.Warn("清理缓存目录警告: %v", err)
 		}
 	}
 
@@ -1314,7 +1315,7 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string) erro
 	cleanedCount := cleanupEmptyAlbumFolders(finalSaveFolder)
 	if cleanedCount > 0 {
 		cyan := color.New(color.FgCyan).SprintFunc()
-		fmt.Printf("%s\n", cyan(fmt.Sprintf("🧹 已清理 %d 个冗余空文件夹", cleanedCount)))
+		logger.Info("%s", cyan(fmt.Sprintf("🧹 已清理 %d 个冗余空文件夹", cleanedCount)))
 	}
 
 	downloadSuccess = true
