@@ -2,6 +2,8 @@ package progress
 
 import (
 	"sync"
+
+	"main/utils/runv14"
 )
 
 // ProgressUpdate 旧的进度更新结构（保持兼容runv14/runv3）
@@ -74,6 +76,38 @@ func (a *ProgressAdapter) UpdateStage(newStage string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.stage = newStage
+}
+
+// ToRunv14Chan 创建一个兼容runv14.ProgressUpdate的channel
+// 专门用于适配runv14包的ProgressUpdate类型
+func (a *ProgressAdapter) ToRunv14Chan() chan<- runv14.ProgressUpdate {
+	ch := make(chan runv14.ProgressUpdate, 10)
+	
+	// 启动后台goroutine转换进度更新
+	go func() {
+		for update := range ch {
+			// 读取当前stage（需要锁保护）
+			a.mu.RLock()
+			currentStage := a.stage
+			a.mu.RUnlock()
+			
+			// 将runv14格式转换为Progress事件格式
+			event := ProgressEvent{
+				TrackIndex: a.trackIndex,
+				Stage:      currentStage,
+				Percentage: update.Percentage,
+				SpeedBPS:   update.SpeedBPS,
+				Status:     "",     // 由UI监听器格式化
+				Error:      nil,
+				Metadata:   nil,
+			}
+			
+			// 通知所有监听器
+			a.notifier.Notify(event)
+		}
+	}()
+	
+	return ch
 }
 
 // Close 关闭适配器（如果需要手动关闭channel）

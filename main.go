@@ -152,7 +152,7 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Unlock()
 }
 
-func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int) (string, string, error) {
+func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int, notifier *progress.ProgressNotifier) (string, string, error) {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -215,7 +215,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		return albumId, albumName, err
 	}
 	var urlArg_i = parse.Query().Get("i")
-	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw)
+	err = downloader.Rip(albumId, storefront, urlArg_i, urlRaw, notifier)
 	if err != nil {
 		core.SafePrintf("专辑下载失败: %s -> %v\n", urlRaw, err)
 		return albumId, albumName, err
@@ -254,7 +254,7 @@ func parseTxtFile(filePath string) ([]string, error) {
 	return urls, nil
 }
 
-func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
+func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
 	var finalUrls []string
 
 	// 显示输入链接统计
@@ -446,7 +446,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
 
-		albumId, albumName, err := processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks)
+		albumId, albumName, err := processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
 
 		// 记录到历史
 		if task != nil && albumId != "" {
@@ -655,13 +655,13 @@ func main() {
 					return
 				}
 				logger.Info("📊 从文件 %s 中解析到 %d 个链接\n", input, len(urls))
-				runDownloads(urls, true, input)
+				runDownloads(urls, true, input, progressNotifier)
 			} else {
 				logger.Error("错误: 文件不存在 %s", input)
 				return
 			}
 		} else {
-			runDownloads([]string{input}, false, "")
+			runDownloads([]string{input}, false, "", progressNotifier)
 		}
 	} else {
 		// 处理命令行参数：支持TXT文件或直接的URL列表
@@ -702,7 +702,7 @@ func main() {
 			if isBatch {
 				logger.Info("")
 			}
-			runDownloads(urls, isBatch, taskFile)
+			runDownloads(urls, isBatch, taskFile, progressNotifier)
 		} else {
 			logger.Warn("没有有效的链接可供处理。")
 		}
