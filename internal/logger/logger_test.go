@@ -186,4 +186,3 @@ func TestLogLevelString(t *testing.T) {
 		}
 	}
 }
-

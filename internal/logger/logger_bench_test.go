@@ -82,10 +82,9 @@ func BenchmarkGlobalLogger(b *testing.B) {
 // BenchmarkParseLevel 测试日志等级解析性能
 func BenchmarkParseLevel(b *testing.B) {
 	levels := []string{"debug", "info", "warn", "error", "DEBUG", "INFO", "WARN", "ERROR"}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ParseLevel(levels[i%len(levels)])
 	}
 }
-

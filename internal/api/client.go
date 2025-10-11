@@ -385,4 +385,3 @@ func GetToken() (string, error) {
 	}
 	return token, nil
 }
-

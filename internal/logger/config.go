@@ -51,4 +51,3 @@ func DefaultConfig() Config {
 		ShowTimestamp: false,
 	}
 }
-

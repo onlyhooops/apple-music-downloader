@@ -14,60 +14,60 @@ type Account struct {
 }
 
 type ConfigSet struct {
-	Accounts                []Account `yaml:"accounts"`
-	Language                string    `yaml:"language"`
-	SaveLrcFile             bool      `yaml:"save-lrc-file"`
-	LrcType                 string    `yaml:"lrc-type"`
-	LrcFormat               string    `yaml:"lrc-format"`
-	SaveAnimatedArtwork     bool      `yaml:"save-animated-artwork"`
-	EmbyAnimatedArtwork     bool      `yaml:"emby-animated-artwork"`
-	EmbedLrc                bool      `yaml:"embed-lrc"`
-	EmbedCover              bool      `yaml:"embed-cover"`
-	SaveArtistCover         bool      `yaml:"save-artist-cover"`
-	CoverSize               string    `yaml:"cover-size"`
-	CoverFormat             string    `yaml:"cover-format"`
-	AlacSaveFolder          string    `yaml:"alac-save-folder"`
-	AtmosSaveFolder         string    `yaml:"atmos-save-folder"`
-	MVSaveFolder            string    `yaml:"mv-save-folder"`
-	AlbumFolderFormat       string    `yaml:"album-folder-format"`
-	PlaylistFolderFormat    string    `yaml:"playlist-folder-format"`
-	ArtistFolderFormat      string    `yaml:"artist-folder-format"`
-	SongFileFormat          string    `yaml:"song-file-format"`
-	ExplicitChoice          string    `yaml:"explicit-choice"`
-	CleanChoice             string    `yaml:"clean-choice"`
-	AppleMasterChoice       string    `yaml:"apple-master-choice"`
-	MaxMemoryLimit          int       `yaml:"max-memory-limit"`
-	GetM3u8Mode             string    `yaml:"get-m3u8-mode"`
-	GetM3u8FromDevice       bool      `yaml:"get-m3u8-from-device"`
-	AacType                 string    `yaml:"aac-type"`
-	AlacMax                 int       `yaml:"alac-max"`
-	AtmosMax                int       `yaml:"atmos-max"`
-	LimitMax                int       `yaml:"limit-max"`
-	UseSongInfoForPlaylist  bool      `yaml:"use-songinfo-for-playlist"`
-	DlAlbumcoverForPlaylist bool      `yaml:"dl-albumcover-for-playlist"`
-	MVAudioType             string    `yaml:"mv-audio-type"`
-	MVMax                   int       `yaml:"mv-max"`
-	AacDownloadThreads      int       `yaml:"aac_downloadthreads"`
-	LosslessDownloadThreads int       `yaml:"lossless_downloadthreads"`
-	HiresDownloadThreads    int       `yaml:"hires_downloadthreads"`
-	ChunkDownloadThreads    int       `yaml:"chunk_downloadthreads"`
-	BufferSizeKB            int       `yaml:"BufferSizeKB"`
-	NetworkReadBufferKB     int       `yaml:"NetworkReadBufferKB"`
-	MaxPathLength           int       `yaml:"max-path-length"`
-	DefaultLyricStorefront  string    `yaml:"default-lyric-storefront"`
-	DownloadVideos          bool      `yaml:"download-videos"`
-	FfmpegFix               bool      `yaml:"ffmpeg-fix"`
-	FfmpegCheckArgs         string    `yaml:"ffmpeg-check-args"`
-	FfmpegEncodeArgs        string    `yaml:"ffmpeg-encode-args"`
-	TxtDownloadThreads      int       `yaml:"txtDownloadThreads"`
-	EnableCache             bool      `yaml:"enable-cache"`
-	CacheFolder             string    `yaml:"cache-folder"`
-	BatchSize               int       `yaml:"batch-size"` // 分批处理的批次大小，0表示不分批
-	SkipExistingValidation  bool      `yaml:"skip-existing-validation"` // 自动跳过已存在文件的校验
-	WorkRestEnabled         bool      `yaml:"work-rest-enabled"` // 启用工作-休息循环
-	WorkDurationMinutes     int       `yaml:"work-duration-minutes"` // 工作时长（分钟）
-	RestDurationMinutes     int       `yaml:"rest-duration-minutes"` // 休息时长（分钟）
-	Logging                 LoggingConfig `yaml:"logging"` // 日志配置
+	Accounts                []Account     `yaml:"accounts"`
+	Language                string        `yaml:"language"`
+	SaveLrcFile             bool          `yaml:"save-lrc-file"`
+	LrcType                 string        `yaml:"lrc-type"`
+	LrcFormat               string        `yaml:"lrc-format"`
+	SaveAnimatedArtwork     bool          `yaml:"save-animated-artwork"`
+	EmbyAnimatedArtwork     bool          `yaml:"emby-animated-artwork"`
+	EmbedLrc                bool          `yaml:"embed-lrc"`
+	EmbedCover              bool          `yaml:"embed-cover"`
+	SaveArtistCover         bool          `yaml:"save-artist-cover"`
+	CoverSize               string        `yaml:"cover-size"`
+	CoverFormat             string        `yaml:"cover-format"`
+	AlacSaveFolder          string        `yaml:"alac-save-folder"`
+	AtmosSaveFolder         string        `yaml:"atmos-save-folder"`
+	MVSaveFolder            string        `yaml:"mv-save-folder"`
+	AlbumFolderFormat       string        `yaml:"album-folder-format"`
+	PlaylistFolderFormat    string        `yaml:"playlist-folder-format"`
+	ArtistFolderFormat      string        `yaml:"artist-folder-format"`
+	SongFileFormat          string        `yaml:"song-file-format"`
+	ExplicitChoice          string        `yaml:"explicit-choice"`
+	CleanChoice             string        `yaml:"clean-choice"`
+	AppleMasterChoice       string        `yaml:"apple-master-choice"`
+	MaxMemoryLimit          int           `yaml:"max-memory-limit"`
+	GetM3u8Mode             string        `yaml:"get-m3u8-mode"`
+	GetM3u8FromDevice       bool          `yaml:"get-m3u8-from-device"`
+	AacType                 string        `yaml:"aac-type"`
+	AlacMax                 int           `yaml:"alac-max"`
+	AtmosMax                int           `yaml:"atmos-max"`
+	LimitMax                int           `yaml:"limit-max"`
+	UseSongInfoForPlaylist  bool          `yaml:"use-songinfo-for-playlist"`
+	DlAlbumcoverForPlaylist bool          `yaml:"dl-albumcover-for-playlist"`
+	MVAudioType             string        `yaml:"mv-audio-type"`
+	MVMax                   int           `yaml:"mv-max"`
+	AacDownloadThreads      int           `yaml:"aac_downloadthreads"`
+	LosslessDownloadThreads int           `yaml:"lossless_downloadthreads"`
+	HiresDownloadThreads    int           `yaml:"hires_downloadthreads"`
+	ChunkDownloadThreads    int           `yaml:"chunk_downloadthreads"`
+	BufferSizeKB            int           `yaml:"BufferSizeKB"`
+	NetworkReadBufferKB     int           `yaml:"NetworkReadBufferKB"`
+	MaxPathLength           int           `yaml:"max-path-length"`
+	DefaultLyricStorefront  string        `yaml:"default-lyric-storefront"`
+	DownloadVideos          bool          `yaml:"download-videos"`
+	FfmpegFix               bool          `yaml:"ffmpeg-fix"`
+	FfmpegCheckArgs         string        `yaml:"ffmpeg-check-args"`
+	FfmpegEncodeArgs        string        `yaml:"ffmpeg-encode-args"`
+	TxtDownloadThreads      int           `yaml:"txtDownloadThreads"`
+	EnableCache             bool          `yaml:"enable-cache"`
+	CacheFolder             string        `yaml:"cache-folder"`
+	BatchSize               int           `yaml:"batch-size"`               // 分批处理的批次大小，0表示不分批
+	SkipExistingValidation  bool          `yaml:"skip-existing-validation"` // 自动跳过已存在文件的校验
+	WorkRestEnabled         bool          `yaml:"work-rest-enabled"`        // 启用工作-休息循环
+	WorkDurationMinutes     int           `yaml:"work-duration-minutes"`    // 工作时长（分钟）
+	RestDurationMinutes     int           `yaml:"rest-duration-minutes"`    // 休息时长（分钟）
+	Logging                 LoggingConfig `yaml:"logging"`                  // 日志配置
 }
 
 // LoggingConfig 日志配置
@@ -79,11 +79,11 @@ type LoggingConfig struct {
 
 // TrackBatch 表示一个曲目批次
 type TrackBatch struct {
-	Tracks       []int  // 批次中的曲目编号列表
-	BatchNum     int    // 当前批次编号（从1开始）
-	TotalBatches int    // 总批次数
-	BatchSize    int    // 当前批次大小
-	IsLast       bool   // 是否最后一个批次
+	Tracks       []int // 批次中的曲目编号列表
+	BatchNum     int   // 当前批次编号（从1开始）
+	TotalBatches int   // 总批次数
+	BatchSize    int   // 当前批次大小
+	IsLast       bool  // 是否最后一个批次
 }
 
 // BatchIterator 批次迭代器
@@ -112,15 +112,15 @@ func (b *BatchIterator) Next() (*TrackBatch, bool) {
 	if b.currentIdx >= b.totalTracks {
 		return nil, false
 	}
-	
+
 	totalBatches := (b.totalTracks + b.batchSize - 1) / b.batchSize
 	batchNum := (b.currentIdx / b.batchSize) + 1
-	
+
 	end := b.currentIdx + b.batchSize
 	if end > b.totalTracks {
 		end = b.totalTracks
 	}
-	
+
 	batch := &TrackBatch{
 		Tracks:       b.tracks[b.currentIdx:end],
 		BatchNum:     batchNum,
@@ -128,7 +128,7 @@ func (b *BatchIterator) Next() (*TrackBatch, bool) {
 		BatchSize:    end - b.currentIdx,
 		IsLast:       end == b.totalTracks,
 	}
-	
+
 	b.currentIdx = end
 	return batch, true
 }

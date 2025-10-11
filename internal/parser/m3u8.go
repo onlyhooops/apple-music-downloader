@@ -342,7 +342,7 @@ func ExtractVideo(c string) (string, string, error) {
 
 	maxHeight := *core.Mv_max
 	re := regexp.MustCompile(`_(\d+)x(\d+)`)
-	
+
 	for _, variant := range video.Variants {
 		matches := re.FindStringSubmatch(variant.URI)
 		if len(matches) == 3 {

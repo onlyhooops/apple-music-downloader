@@ -173,4 +173,3 @@ func ParseLevel(s string) LogLevel {
 		return INFO
 	}
 }
-
