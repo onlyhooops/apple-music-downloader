@@ -108,3 +108,9 @@ apple-master-choice: "[M]"                              # Apple Digital Master �
 # ========== 播放列表元数据 ==========
 use-songinfo-for-playlist: false                        # 是否为播放列表使用歌曲信息
 dl-albumcover-for-playlist: false                       # 是否为播放列表下载专辑封面
+
+# ========== 日志配置 ==========
+logging:
+  level: info                                           # 日志等级: debug/info/warn/error
+  output: stdout                                        # 输出目标: stdout/stderr/文件路径
+  show_timestamp: false                                 # UI模式下关闭时间戳
