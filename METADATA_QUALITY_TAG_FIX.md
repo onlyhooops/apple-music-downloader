@@ -178,13 +178,14 @@ $ chmod +x apple-music-downloader
 ### **3. 测试下载**
 
 ```bash
-# 下载测试专辑
-$ ./apple-music-downloader -u "https://music.apple.com/cn/album/..."
+# 下载测试专辑（注意：直接传递 URL，不需要 -u 参数）
+$ ./apple-music-downloader "https://music.apple.com/cn/album/..."
 
-# 检查元数据（使用 ffprobe 或 mp4info）
-$ ffprobe -show_format -show_streams track.m4a 2>&1 | grep album
-# 或
-$ exiftool track.m4a | grep Album
+# 检查元数据（使用 exiftool）
+$ exiftool "路径/track.m4a" | grep -i album
+
+# 或使用 ffprobe
+$ ffprobe -show_format "track.m4a" 2>&1 | grep -i album
 ```
 
 ---
@@ -211,23 +212,56 @@ Album Artist                    : Wynton Marsalis
 
 ---
 
-## 🔄 **重新下载现有专辑**
+## 🔄 **更新现有专辑的元数据**
 
 如果您希望更新已下载专辑的元数据：
 
-### **方法 1: 重新下载**
+### **方法 1: 使用自动化脚本（推荐）**
+
+我们提供了 `update_album_metadata.sh` 脚本来批量更新已下载文件：
+
+```bash
+# 更新指定目录下的所有 m4a 文件
+$ ./update_album_metadata.sh "/path/to/music/folder"
+
+# 或更新当前目录
+$ ./update_album_metadata.sh
+```
+
+**脚本功能**：
+- ✅ 自动识别文件夹名称中的音质标签（Hi-Res Lossless, Alac, Dolby Atmos, Aac 256）
+- ✅ 提取专辑名称并添加音质标签
+- ✅ 同时更新 Album 和 AlbumSort 字段
+- ✅ 跳过已包含音质标签的文件
+- ✅ 显示详细的处理进度和统计
+
+**示例输出**：
+```
+📝 更新: 04. Vein Melter.m4a
+   旧: Head Hunters
+   新: Head Hunters Hi-Res Lossless
+   ✅ 更新成功
+
+📊 处理统计
+总文件数:   24
+已更新:     24
+已跳过:     0
+失败:       0
+```
+
+### **方法 2: 重新下载**
 
 ```bash
 # 删除旧专辑文件夹
 $ rm -rf "Black Codes (From The Underground) [2023 Remaster] Alac"
 
-# 使用新版本重新下载
-$ ./apple-music-downloader -u "https://music.apple.com/..."
+# 使用新版本重新下载（注意：不需要 -u 参数）
+$ ./apple-music-downloader-v2.6.0-metadata-fix "https://music.apple.com/..."
 ```
 
-### **方法 2: 批量更新元数据（手动）**
+### **方法 3: 手动批量更新**
 
-使用第三方工具批量更新：
+使用第三方图形界面工具：
 - **iTunes/Music.app**: 选中曲目 → 右键 → "显示简介" → "排序" 标签
 - **Mp3tag** (Windows): 批量编辑工具
 - **Kid3** (Linux/macOS): 开源标签编辑器
