@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"main/internal/core"
+	"main/internal/logger"
 	"main/internal/parser"
 	"main/utils/structs"
 	"net/http"
@@ -27,7 +28,7 @@ func GetUrlSong(songUrl string, account *structs.Account) (string, error) {
 	storefront, songId := parser.CheckUrlSong(songUrl)
 	manifest, err := GetInfoFromAdam(songId, account, storefront)
 	if err != nil {
-		fmt.Println("\u26A0 Failed to get manifest:", err)
+		logger.Error("\u26A0 Failed to get manifest: %v", err)
 		core.SharedLock.Lock()
 		core.Counter.NotSong++
 		core.SharedLock.Unlock()
@@ -135,18 +136,18 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 	}
 	table.Render()
 	if core.Artist_select {
-		fmt.Println("You have selected all options:")
+		logger.Info("You have selected all options:")
 		return urls, nil
 	}
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("Please select from the " + relationship + " options above (multiple options separated by commas, ranges supported, or type 'all' to select all)")
+	logger.Info("Please select from the " + relationship + " options above (multiple options separated by commas, ranges supported, or type 'all' to select all)")
 	cyanColor := color.New(color.FgCyan)
 	cyanColor.Print("Enter your choice: ")
 	input, _ := reader.ReadString('\n')
 
 	input = strings.TrimSpace(input)
 	if input == "all" {
-		fmt.Println("You have selected all options:")
+		logger.Info("You have selected all options:")
 		return urls, nil
 	}
 
@@ -161,37 +162,37 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 		}
 	}
 
-	fmt.Println("You have selected the following options:")
+	logger.Info("You have selected the following options:")
 	for _, opt := range selectedOptions {
 		if len(opt) == 1 {
 			num, err := strconv.Atoi(opt[0])
 			if err != nil {
-				fmt.Println("Invalid option:", opt[0])
+				logger.Warn("Invalid option: %s", opt[0])
 				continue
 			}
 			if num > 0 && num <= len(options) {
-				fmt.Println(options[num-1])
+				logger.Info("%v", options[num-1])
 				args = append(args, urls[num-1])
 			} else {
-				fmt.Println("Option out of range:", opt[0])
+				logger.Warn("Option out of range: %s", opt[0])
 			}
 		} else if len(opt) == 2 {
 			start, err1 := strconv.Atoi(opt[0])
 			end, err2 := strconv.Atoi(opt[1])
 			if err1 != nil || err2 != nil {
-				fmt.Println("Invalid range:", opt)
+				logger.Warn("Invalid range: %v", opt)
 				continue
 			}
 			if start < 1 || end > len(options) || start > end {
-				fmt.Println("Range out of range:", opt)
+				logger.Warn("Range out of range: %v", opt)
 				continue
 			}
 			for i := start; i <= end; i++ {
-				fmt.Println(options[i-1])
+				logger.Info("%v", options[i-1])
 				args = append(args, urls[i-1])
 			}
 		} else {
-			fmt.Println("Invalid option:", opt)
+			logger.Warn("Invalid option: %v", opt)
 		}
 	}
 	return args, nil
