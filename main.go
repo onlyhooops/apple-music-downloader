@@ -302,19 +302,19 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 	}
 
 	totalTasks := len(finalUrls)
-	
+
 	// 处理 --start 参数
-	startIndex := 0  // 实际数组索引（从0开始）
+	startIndex := 0 // 实际数组索引（从0开始）
 	if core.StartFrom > 0 {
 		if core.StartFrom > totalTasks {
 			core.SafePrintf("⚠️  起始位置 %d 超过了总任务数 %d，将从第 1 个开始\n", core.StartFrom, totalTasks)
 			core.StartFrom = 1
 		} else {
-			startIndex = core.StartFrom - 1  // 用户输入从1开始，转换为0开始的索引
+			startIndex = core.StartFrom - 1 // 用户输入从1开始，转换为0开始的索引
 			skippedCount := startIndex
 			core.SafePrintf("⏭️  跳过前 %d 个任务，从第 %d 个开始下载\n", skippedCount, core.StartFrom)
-			finalUrls = finalUrls[startIndex:]  // 跳过前面的链接
-			totalTasks = len(finalUrls)          // 更新剩余任务数
+			finalUrls = finalUrls[startIndex:] // 跳过前面的链接
+			totalTasks = len(finalUrls)        // 更新剩余任务数
 		}
 	}
 
@@ -405,7 +405,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 
 	// 保存原始总数用于显示
 	originalTotalTasks := len(initialUrls)
-	
+
 	if isBatch {
 		core.SafePrintf("\n📋 ========== 开始下载任务 ==========\n")
 		if len(initialUrls) != totalTasks {
@@ -428,22 +428,22 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 
 	// 批量模式：串行执行（按链接顺序依次下载）
 	// 专辑内歌曲并发数由配置文件控制 (lossless_downloadthreads 等)
-	
+
 	// 工作-休息循环机制
 	var workStartTime time.Time
 	if isBatch && core.Config.WorkRestEnabled {
 		workStartTime = time.Now()
-		core.SafePrintf("⏰ 工作-休息循环已启用: 工作 %d 分钟，休息 %d 分钟\n", 
-			core.Config.WorkDurationMinutes, 
+		core.SafePrintf("⏰ 工作-休息循环已启用: 工作 %d 分钟，休息 %d 分钟\n",
+			core.Config.WorkDurationMinutes,
 			core.Config.RestDurationMinutes)
 		core.SafePrintf("⏱️  工作开始时间: %s\n\n", workStartTime.Format("15:04:05"))
 	}
-	
+
 	for i, urlToProcess := range finalUrls {
 		// 计算实际的任务编号（考虑 --start 参数）
-		actualTaskNum := i + 1 + startIndex  // 实际编号 = 当前索引 + 1 + 跳过的数量
+		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
-		
+
 		albumId, albumName, err := processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks)
 
 		// 记录到历史
@@ -481,20 +481,20 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 		if isBatch && i < len(finalUrls)-1 {
 			core.SafePrintf("\n%s\n\n", strings.Repeat("=", 80))
 		}
-		
+
 		// 工作-休息循环检查（在任务完成后）
 		if isBatch && core.Config.WorkRestEnabled && i < len(finalUrls)-1 {
 			elapsed := time.Since(workStartTime)
 			workDuration := time.Duration(core.Config.WorkDurationMinutes) * time.Minute
-			
+
 			if elapsed >= workDuration {
 				// 工作时间已到，需要休息
 				restDuration := time.Duration(core.Config.RestDurationMinutes) * time.Minute
-				
+
 				cyan := color.New(color.FgCyan, color.Bold)
 				yellow := color.New(color.FgYellow)
 				green := color.New(color.FgGreen)
-				
+
 				core.SafePrintf("\n")
 				core.SafePrintf(strings.Repeat("=", 80) + "\n")
 				cyan.Printf("⏸️  工作时长已达 %d 分钟，进入休息时间\n", core.Config.WorkDurationMinutes)
@@ -503,12 +503,12 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 				core.SafePrintf("⏰ 当前时间: %s\n", time.Now().Format("15:04:05"))
 				core.SafePrintf("⏱️  预计恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
 				core.SafePrintf(strings.Repeat("=", 80) + "\n\n")
-				
+
 				// 休息倒计时（每30秒提示一次）
 				restTicker := time.NewTicker(30 * time.Second)
 				restTimer := time.NewTimer(restDuration)
 				restStartTime := time.Now()
-				
+
 				restDone := false
 				for !restDone {
 					select {
@@ -519,14 +519,14 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string) {
 						// 显示剩余时间
 						remainingTime := restDuration - time.Since(restStartTime)
 						if remainingTime > 0 {
-							core.SafePrintf("⏳ 休息中... 剩余时间: %.0f 分钟 %.0f 秒\n", 
-								remainingTime.Minutes(), 
+							core.SafePrintf("⏳ 休息中... 剩余时间: %.0f 分钟 %.0f 秒\n",
+								remainingTime.Minutes(),
 								remainingTime.Seconds()-remainingTime.Minutes()*60)
 						}
 					}
 				}
 				restTicker.Stop()
-				
+
 				// 休息结束，重新开始计时
 				workStartTime = time.Now()
 				core.SafePrintf("\n")
@@ -552,14 +552,14 @@ func main() {
 	// 打印版本信息
 	cyan := color.New(color.FgCyan, color.Bold)
 	yellow := color.New(color.FgYellow)
-	fmt.Println(strings.Repeat("=", 80))
+	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
 	cyan.Printf("🎵 Apple Music Downloader %s\n", Version)
 	yellow.Printf("📅 编译时间: %s\n", BuildTime)
 	if GitCommit != "unknown" {
 		yellow.Printf("🔖 Git提交: %s\n", GitCommit)
 	}
-	fmt.Println(strings.Repeat("=", 80))
-	fmt.Println()
+	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
+	fmt.Println()                        // OK: 程序启动横幅
 
 	core.InitFlags()
 
@@ -589,12 +589,12 @@ func main() {
 	err := core.LoadConfig(core.ConfigPath)
 	if err != nil {
 		if os.IsNotExist(err) && core.ConfigPath == "config.yaml" {
-			// logger还未初始化，使用fmt
+			// OK: logger还未初始化，必须使用fmt
 			fmt.Println("错误: 默认配置文件 config.yaml 未找到。")
 			pflag.Usage()
 			return
 		}
-		// logger还未初始化，使用fmt
+		// OK: logger还未初始化，必须使用fmt
 		fmt.Printf("加载配置文件 %s 失败: %v\n", core.ConfigPath, err)
 		return
 	}
@@ -606,7 +606,7 @@ func main() {
 		ShowTimestamp: core.Config.Logging.ShowTimestamp,
 	}
 	if err := logger.InitFromConfig(loggerCfg); err != nil {
-		// 这里不能用logger.Error，因为logger初始化失败
+		// OK: 这里不能用logger.Error，因为logger初始化失败
 		fmt.Printf("初始化logger失败: %v\n", err)
 		return
 	}
@@ -641,11 +641,11 @@ func main() {
 
 		if strings.HasSuffix(strings.ToLower(input), ".txt") {
 			if _, err := os.Stat(input); err == nil {
-			urls, err := parseTxtFile(input)
-			if err != nil {
-				logger.Error("读取文件 %s 失败: %v", input, err)
-				return
-			}
+				urls, err := parseTxtFile(input)
+				if err != nil {
+					logger.Error("读取文件 %s 失败: %v", input, err)
+					return
+				}
 				logger.Info("📊 从文件 %s 中解析到 %d 个链接\n", input, len(urls))
 				runDownloads(urls, true, input)
 			} else {
@@ -665,11 +665,11 @@ func main() {
 			if strings.HasSuffix(strings.ToLower(arg), ".txt") {
 				// 参数是TXT文件
 				if _, err := os.Stat(arg); err == nil {
-				fileUrls, err := parseTxtFile(arg)
-				if err != nil {
-					logger.Error("读取文件 %s 失败: %v", arg, err)
-					continue
-				}
+					fileUrls, err := parseTxtFile(arg)
+					if err != nil {
+						logger.Error("读取文件 %s 失败: %v", arg, err)
+						continue
+					}
 					logger.Info("📊 从文件 %s 中解析到 %d 个链接", arg, len(fileUrls))
 					urls = append(urls, fileUrls...)
 					isBatch = true

@@ -199,7 +199,7 @@ func PrintUI(isFirstUpdate bool) {
 
 		builder.WriteString(fmt.Sprintf("\r\033[K%s\n", line))
 	}
-	fmt.Print(builder.String())
+	fmt.Print(builder.String()) // OK: UI渲染核心，必须使用fmt.Print输出到stdout
 }
 
 func UpdateStatus(index int, status string, sColor func(a ...interface{}) string) {
