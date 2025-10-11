@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"main/internal/logger"
 	"main/utils/structs"
 
 	"github.com/Eyevinn/mp4ff/mp4"
@@ -714,9 +715,9 @@ func RunOrchestrated(adamId string, playlistUrl string, targetStorefront string,
 	yellow := color.New(color.FgYellow).SprintFunc()
 
 	if targetStorefront != "" {
-		fmt.Printf("从链接中识别到区域 (Storefront): %s\n", yellow(strings.ToUpper(targetStorefront)))
+		logger.Info("从链接中识别到区域 (Storefront): %s", yellow(strings.ToUpper(targetStorefront)))
 	} else {
-		fmt.Println("警告: 无法从URL中自动识别区域，将按配置文件顺序尝试所有可用服务。")
+		logger.Warn("警告: 无法从URL中自动识别区域，将按配置文件顺序尝试所有可用服务。")
 	}
 
 	var preferredAccounts []*structs.Account
@@ -740,19 +741,19 @@ func RunOrchestrated(adamId string, playlistUrl string, targetStorefront string,
 	var lastError error
 
 	for _, acc := range orderedAccounts {
-		fmt.Printf("--------------------------------------------------\n")
-		fmt.Printf("正在尝试服务: %s (端口: %s, 区域: %s)\n", acc.Name, acc.DecryptM3u8Port, yellow(strings.ToUpper(acc.Storefront)))
+		logger.Info("--------------------------------------------------")
+		logger.Info("正在尝试服务: %s (端口: %s, 区域: %s)", acc.Name, acc.DecryptM3u8Port, yellow(strings.ToUpper(acc.Storefront)))
 		err := Run(adamId, playlistUrl, outfile, acc, config, nil)
 		if err == nil {
-			fmt.Printf("服务 %s 操作成功！任务完成。\n", acc.Name)
+			logger.Info("服务 %s 操作成功！任务完成。", acc.Name)
 			return nil
 		}
-		fmt.Printf("警告: 服务 %s 操作失败: %v\n", acc.Name, err)
+		logger.Warn("警告: 服务 %s 操作失败: %v", acc.Name, err)
 		lastError = err
 	}
 
-	fmt.Println("##################################################")
-	fmt.Println("所有可用的服务均尝试失败。")
-	fmt.Println("##################################################")
+	logger.Error("##################################################")
+	logger.Error("所有可用的服务均尝试失败。")
+	logger.Error("##################################################")
 	return fmt.Errorf("所有服务均操作失败，最后一次的错误为: %w", lastError)
 }
