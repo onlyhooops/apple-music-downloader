@@ -18,6 +18,8 @@ import (
 	"main/internal/history"
 	"main/internal/logger"
 	"main/internal/parser"
+	"main/internal/progress"
+	"main/internal/ui"
 
 	"github.com/fatih/color"
 	"github.com/spf13/pflag"
@@ -610,6 +612,12 @@ func main() {
 		fmt.Printf("初始化logger失败: %v\n", err)
 		return
 	}
+
+	// 创建进度通知器并注册UI监听器
+	progressNotifier := progress.NewNotifier()
+	uiListener := ui.NewUIProgressListener()
+	progressNotifier.AddListener(uiListener)
+	logger.Debug("Progress notifier initialized with UI listener")
 
 	if core.OutputPath != "" {
 		core.Config.AlacSaveFolder = core.OutputPath
