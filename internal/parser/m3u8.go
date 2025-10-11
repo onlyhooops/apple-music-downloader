@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"main/internal/core"
+	"main/internal/logger"
 	"main/utils/structs"
 	"net"
 	"net/http"
@@ -234,7 +235,7 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 	}
 
 	if core.Debug_mode && more_mode {
-		fmt.Println("\nDebug: All Available Variants:")
+		logger.Debug("\nDebug: All Available Variants:")
 		var data [][]string
 		for _, variant := range master.Variants {
 			data = append(data, []string{variant.Codecs, variant.Audio, fmt.Sprint(variant.Bandwidth)})
@@ -245,14 +246,14 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 		table.AppendBulk(data)
 		table.Render()
 
-		fmt.Println("Available Audio Formats:")
-		fmt.Println("------------------------")
-		fmt.Printf("AAC             : %s\n", formatAvailability(hasAAC, aacQuality))
-		fmt.Printf("Lossless        : %s\n", formatAvailability(hasLossless, losslessQuality))
-		fmt.Printf("Hi-Res Lossless : %s\n", formatAvailability(hasHiRes, hiResQuality))
-		fmt.Printf("Dolby Atmos     : %s\n", formatAvailability(hasAtmos, atmosQuality))
-		fmt.Printf("Dolby Audio     : %s\n", formatAvailability(hasDolbyAudio, dolbyAudioQuality))
-		fmt.Println("------------------------")
+		logger.Debug("Available Audio Formats:")
+		logger.Debug("------------------------")
+		logger.Debug("AAC             : %s", formatAvailability(hasAAC, aacQuality))
+		logger.Debug("Lossless        : %s", formatAvailability(hasLossless, losslessQuality))
+		logger.Debug("Hi-Res Lossless : %s", formatAvailability(hasHiRes, hiResQuality))
+		logger.Debug("Dolby Atmos     : %s", formatAvailability(hasAtmos, atmosQuality))
+		logger.Debug("Dolby Audio     : %s", formatAvailability(hasDolbyAudio, dolbyAudioQuality))
+		logger.Debug("------------------------")
 
 		return "", "", "", nil
 	}

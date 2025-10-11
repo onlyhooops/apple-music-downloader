@@ -12,6 +12,7 @@ import (
 	//"github.com/fatih/color"
 	//"github.com/olekukonko/tablewriter"
 
+	"main/internal/logger"
 	"main/utils/ampapi"
 )
 
@@ -63,7 +64,7 @@ func (a *Station) GetResp(mutoken, token, l string) error {
 	for i, trackData := range tracksResp.Data {
 		albumResp, err := ampapi.GetAlbumRespByHref(trackData.Href, a.Language, token)
 		if err != nil {
-			fmt.Println("Error getting album response:", err)
+			logger.Error("Error getting album response: %v", err)
 			continue
 		}
 		albumLen := len(albumResp.Data[0].Relationships.Tracks.Data)
