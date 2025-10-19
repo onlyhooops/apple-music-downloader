@@ -1,94 +1,78 @@
-# Apple Music ALAC / Dolby Atmos Downloader
+# Apple Music Downloader
 
-[English](#) / [简体中文](./README-CN.md)
+[English](#) | [简体中文](./README-CN.md)
 
-> [!WARNING]
-> **⚠️ Experimental Branch Warning**
+> **A powerful Apple Music high-quality audio downloader**
 >
-> This branch is an experimental version for personal use only, containing extensive modifications with numerous unknown bugs and risks. Please use with caution!
->
-> This branch contains experimental features that have not been thoroughly tested, which may lead to data loss, download failures, or other unforeseen issues. For production environments, please use the official stable version.
+> Supports ALAC, Hi-Res Lossless, Dolby Atmos and other lossless formats, as well as music video downloads.
 
-**A powerful Apple Music download tool supporting ALAC, Dolby Atmos, Hi-Res Lossless and other high-quality audio formats, as well as music video downloads.**
-
-Original script by Sorrow, extensively improved and optimized.
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
+[![Go Version](https://img.shields.io/badge/Go-1.23.1+-00ADD8.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-Personal%20Use-green.svg)](./LICENSE)
 
 ---
 
-## 🎉 Latest Updates (v2.8.2)
+## 📖 Table of Contents
 
-### 🚀 v2.8.2 - Audio Stream Selection Enhancement (2025-10-19)
-
-#### 🔧 Core Improvements
-- **Smart Quality Selection** - Intelligently selects the best available quality while respecting user preferences
-- **Binaural Audio Support** - Full support for binaural audio streams (`--aac --aac-type binaural`)
-- **Enhanced Audio Traits Detection** - Improved detection of audio characteristics for better quality selection
-
-#### ⚡ Performance Optimizations
-- **Stream Selection Algorithm** - Optimized M3U8 parsing for accurate audio stream selection
-- **Quality Tag Generation** - Fixed quality tag generation to reflect actual downloaded content
-- **History System Enhancement** - Improved quality hash calculation for better duplicate detection
-
-#### 🐛 Critical Fixes
-- **Audio Stream Selection** - Fixed issue where binaural streams were not properly selected
-- **Quality Tag Consistency** - Resolved inconsistency between downloaded quality and displayed tags
-- **Empty Folder Creation** - Eliminated creation of unnecessary empty folders
-
-### 🎯 v2.7.0 - Global History & Architecture Refactor (2025-10-12)
-
-#### 🏗️ Architecture Refactoring
-- **Unified Logging System** - New `internal/logger` module with 4-level log control (DEBUG/INFO/WARN/ERROR)
-- **Progress Event System** - Observer pattern event architecture, decoupling UI updates from business logic
-- **Smart UI Simplification** - Adaptive terminal width display (FullMode/CompactMode/MinimalMode)
-- **Album Metadata Enhancement** - Album and AlbumSort fields now include quality tags (e.g., "Head Hunters Hi-Res Lossless")
-
-#### ⚡ Performance Optimizations
-- **Reduced UI Refresh Rate** - Changed from 200ms to intelligent refresh, reducing CPU usage
-- **Logger Performance Optimization** - Supports high-concurrency logging output
-- **Improved Progress Event Distribution** - Enhanced multi-task concurrency efficiency
-
-#### 🐛 Critical Fixes
-- **Logger Duplication Issue** - Fixed logger output interfering with UI cursor positioning (redirected logger to stderr)
-- **UI Rendering Misalignment** - Fixed line overlapping and scrolling issues caused by long track names
-- **Metadata Quality Tags** - Fixed issue where music management software couldn't distinguish different quality versions of the same album
+- [Core Features](#-core-features)
+- [System Requirements](#-system-requirements)
+- [Quick Start](#-quick-start)
+- [Usage Guide](#-usage-guide)
+- [Advanced Features](#-advanced-features)
+- [Configuration](#-configuration)
+- [Troubleshooting](#-troubleshooting)
+- [Acknowledgments](#-acknowledgments)
 
 ---
 
 ## ✨ Core Features
 
-### 🎵 Audio Format Support
-- **ALAC (Lossless Audio)** - `audio-alac-stereo`
-- **Dolby Atmos / EC3** - `audio-atmos` / `audio-ec3`
-- **Hi-Res Lossless (High-Resolution Lossless)** - Up to 24-bit/192kHz
-- **AAC Formats** - `audio-stereo`, `audio-stereo-binaural`, `audio-stereo-downmix`
-- **AAC-LC** - `audio-stereo` (requires subscription)
+### 🎵 Multi-Format Audio Support
 
-### 📹 Music Video Support
-- **4K/1080p/720p** resolution options
-- **Emby/Jellyfin compatible** naming structure
-- **Multi-audio track support** (Atmos/AC3/AAC)
-- Independent save path configuration
+#### Lossless Audio Formats
+- **ALAC (Apple Lossless)** - Native lossless audio with perfect quality
+- **Hi-Res Lossless** - High-resolution lossless audio up to 24-bit/192kHz
+- **Dolby Atmos** - Immersive 3D audio experience
+- **Dolby EC-3** - Enhanced Dolby Digital audio
 
-### 🎼 Rich Metadata and Lyrics
-- **Embedded artwork** and artwork (up to 5000x5000)
-- **Synchronized LRC lyrics** (word-by-word / syllable-by-syllable)
-- **Translation and pronunciation lyrics** support (Beta)
-- **Dynamic artwork** (Emby/Jellyfin support)
-- Complete metadata tags
+#### Lossy Audio Formats
+- **AAC 256kbps** - High-quality AAC-LC encoding
+- **AAC Binaural** - Binaural spatial audio
+- **AAC Downmix** - Downmixed audio streams
+- **AAC Stereo** - Standard stereo format
 
-### ⚡ Performance Optimizations
-- **Cache transfer mechanism** - 50-70% speed improvement for NFS/network storage
-- **Parallel downloads** - Multi-threaded segment downloads
-- **Smart file checking** - Skip already downloaded files
-- **Batch downloads** - Read links from TXT files with configurable thread count
+### 📹 Music Video Downloads
+
+- **Multiple Resolutions** - 4K (2160p) / 1080p / 720p / 480p
+- **Multi-Track Audio** - Atmos / AC3 / AAC tracks
+- **Media Server Compatible** - Emby / Jellyfin / Plex naming conventions
+- **Separate Save Path** - Customizable MV storage location
+
+### 🎼 Complete Metadata Support
+
+- **Album Artwork** - Up to 5000x5000 resolution
+- **Lyrics Embedding** - Synchronized LRC lyrics (word-by-word/syllable-by-syllable)
+- **Translation Lyrics** - Multi-language translation support (Beta)
+- **Animated Artwork** - Supports animated artwork (requires FFmpeg)
+- **Full Tags** - Artist, album, track number, release date, etc.
+
+### ⚡ Performance Optimization
+
+- **Cache Mechanism** - Optimized for NFS/SMB network storage, 50-70% speed improvement
+- **Parallel Downloads** - Multi-threaded chunk downloads for maximum bandwidth utilization
+- **Smart Resume** - Supports download resumption after interruption
+- **Batch Processing** - Bulk download from TXT files
 
 ### 🛠️ Advanced Features
-- **Multi-account rotation** - Automatic account selection based on region
-- **FFmpeg auto-repair** - Detect and repair encoding issues
-- **Interactive mode** - Arrow key navigation for search results
-- **Artist downloads** - Download all albums/MVs from an artist page
-- **Custom naming** - Flexible folder and file naming formats
-- **Output modes** - Dynamic UI or pure log mode (`--no-ui`)
+
+- **Global History** - Automatically tracks downloaded content to avoid duplicates
+- **Multi-Account Management** - Support multiple region accounts with auto-selection
+- **Interactive Search** - Built-in search for songs/albums/artists
+- **Custom Naming** - Flexible folder and file naming formats
+- **Quality Tags** - Optional quality tags in filenames and metadata
+- **FFmpeg Repair** - Automatic audio encoding issue detection and repair
+- **Dynamic UI** - Real-time progress display with multi-task support
+- **Pure Log Mode** - `--no-ui` mode suitable for CI/CD environments
 
 ---
 
@@ -96,21 +80,24 @@ Original script by Sorrow, extensively improved and optimized.
 
 ### Required Dependencies
 
-1. **[MP4Box](https://gpac.io/downloads/gpac-nightly-builds/)** - Must be installed and added to system PATH
-2. **[mp4decrypt](https://www.bento4.com/downloads/)** - Required for music video downloads
-3. **FFmpeg** (optional) - For dynamic artwork and auto-repair features
+1. **[Go 1.23.1+](https://golang.org/dl/)** - Compilation and runtime environment
+2. **[MP4Box](https://gpac.io/downloads/gpac-nightly-builds/)** - Audio file processing (required)
+3. **[mp4decrypt](https://www.bento4.com/downloads/)** - Music video decryption (required for MV downloads)
+4. **[FFmpeg](https://ffmpeg.org/)** - Animated artwork and auto-repair features (optional)
 
-### System Requirements
-- Go 1.23.1 or higher
-- Recommended 8GB+ memory
-- 50GB+ available disk space (if using cache mechanism)
+### System Configuration
 
-> [!NOTE]
-> **💡 Disk Space Recommendations**
->
-> - **Without cache**: Only need space for downloaded files
-> - **With cache mechanism**: Additional 50GB+ local temporary space required
-> - **Large-scale batch downloads**: Recommend reserving 100GB+ space for optimal performance
+- **Operating System**: Linux / macOS / Windows
+- **Memory**: 8GB+ recommended
+- **Disk Space**: 
+  - Without cache: Only space for downloaded files
+  - With cache mechanism: Additional 50GB+ local temporary space
+  - Large-scale batch downloads: 100GB+ recommended
+
+### Apple Music Account
+
+- **Basic Features**: Free account can download ALAC and Dolby Atmos
+- **Advanced Features**: AAC 256, MV downloads, and lyrics require active subscription
 
 ---
 
@@ -123,7 +110,7 @@ Original script by Sorrow, extensively improved and optimized.
 git clone https://github.com/onlyhooops/apple-music-downloader.git
 cd apple-music-downloader
 
-# Install dependencies
+# Install Go dependencies
 go mod tidy
 
 # Build binary
@@ -132,283 +119,370 @@ go build -o apple-music-downloader main.go
 
 ### 2. Configuration
 
-```bash
-# Copy example configuration
-cp config.yaml.example config.yaml
+#### Create Configuration Files
 
-# Edit configuration file
+```bash
+# Copy configuration templates
+cp config.yaml.example config.yaml
+cp dev.env.example dev.env
+
+# Edit configuration files
 nano config.yaml
+nano dev.env
 ```
 
-**Get `media-user-token`:**
-1. Open [Apple Music](https://music.apple.com) and log in
-2. Press `F12` to open Developer Tools
-3. Go to `Application` (应用程序) → `Cookies` → `https://music.apple.com`
-4. Find the cookie named `media-user-token` and copy its value
-5. Paste it into `config.yaml`
+#### Get Apple Music Token
+
+1. Open [Apple Music Web](https://music.apple.com) and log in
+2. Press **F12** to open Developer Tools
+3. Go to **Application** tab
+4. Navigate to **Cookies** → `https://music.apple.com` in the left sidebar
+5. Find the cookie named `media-user-token`
+6. Copy its value and paste into `dev.env`:
+
+```bash
+# dev.env
+APPLE_MUSIC_MEDIA_USER_TOKEN_CN=your-token-here
+```
+
+#### Configure Save Paths
+
+Edit `config.yaml`:
+
+```yaml
+# Save path configuration
+alac-save-folder: "/media/Music/AppleMusic/Alac"
+atmos-save-folder: "/media/Music/AppleMusic/Atmos"
+mv-save-folder: "/media/Music/AppleMusic/MusicVideos"
+```
 
 ### 3. Basic Usage
 
 ```bash
-# Download album
-./apple-music-downloader https://music.apple.com/cn/album/album-name/123456789
+# Download album (default ALAC lossless)
+./apple-music-downloader https://music.apple.com/us/album/album-name/123456789
 
 # Download Dolby Atmos
-./apple-music-downloader --atmos https://music.apple.com/cn/album/album-name/123456789
+./apple-music-downloader --atmos https://music.apple.com/us/album/album-name/123456789
+
+# Download AAC 256 format
+./apple-music-downloader --aac https://music.apple.com/us/album/album-name/123456789
 
 # Download single track
-./apple-music-downloader --song https://music.apple.com/cn/album/album/123?i=456
+./apple-music-downloader --song https://music.apple.com/us/album/album/123?i=456
 
 # Download playlist
-./apple-music-downloader https://music.apple.com/cn/playlist/playlist-name/pl.xxxxx
+./apple-music-downloader https://music.apple.com/us/playlist/playlist-name/pl.xxxxx
 
-# Download all content from an artist
-./apple-music-downloader https://music.apple.com/cn/artist/artist-name/123456
-
-# Interactive search
-./apple-music-downloader --search song "search terms"
-./apple-music-downloader --search album "album name"
-./apple-music-downloader --search artist "artist name"
-
-# Batch download from TXT file
-./apple-music-downloader urls.txt
-
-# Pure log mode (for CI/debugging)
-./apple-music-downloader --no-ui https://music.apple.com/...
+# Download all works from an artist
+./apple-music-downloader https://music.apple.com/us/artist/artist-name/123456
 ```
 
 ---
 
-## 📖 Advanced Usage
+## 📖 Usage Guide
 
-### Environment Variables Setup
-
-Create a `dev.env` file based on `dev.env.example`:
+### Interactive Search
 
 ```bash
-# Copy template
-cp dev.env.example dev.env
+# Search for songs
+./apple-music-downloader --search song "song name"
 
-# Edit and add your credentials
-nano dev.env
+# Search for albums
+./apple-music-downloader --search album "album name"
+
+# Search for artists
+./apple-music-downloader --search artist "artist name"
 ```
 
-**Required environment variables:**
+After searching, a results list will be displayed. Use arrow keys to select and Enter to confirm download.
+
+### Batch Downloads
+
+Create a `urls.txt` file with one link per line:
+
+```text
+https://music.apple.com/us/album/album1/123456789
+https://music.apple.com/us/album/album2/987654321
+https://music.apple.com/us/playlist/playlist/pl.xxxxx
+# This is a comment line and will be ignored
+```
+
+Execute batch download:
+
 ```bash
-APPLE_MUSIC_MEDIA_USER_TOKEN_CN=your-media-user-token-here
-APPLE_MUSIC_AUTH_TOKEN_CN=your-auth-token
+./apple-music-downloader urls.txt
 ```
 
-### Cache Mechanism (NFS Optimization)
+### Command Line Options
 
-> [!IMPORTANT]
-> **⚠️ Cache Mechanism Important Notes**
->
-> **Recommended scenarios:**
-> - ✅ Target path is NFS/SMB or other network file systems
-> - ✅ Local disk has 50GB+ available space (SSD recommended)
-> - ✅ Need frequent batch download tasks
->
-> **Key considerations:**
-> - ⚠️ **Disk space**: Cache folder requires sufficient temporary storage space, recommend at least 50GB
-> - ⚠️ **Cache path**: Must use local fast disk (SSD), don't set on NFS or other network paths
-> - ⚠️ **File system**: Cross-filesystem transfer will use copy method, speed will be reduced
-> - ⚠️ **Cleanup mechanism**: Program automatically cleans successfully transferred cache, also auto-rollback on failure
-> - ⚠️ **Manual cleanup**: Can manually delete `Cache` folder anytime, program will auto-rebuild
->
-> **Performance improvement data (measured):**
-> - Download time improvement: **50-70%**
-> - Network I/O reduction: **90%+**
-> - Better stability: Atomic operations, automatic rollback on failure
+| Option | Description |
+|--------|-------------|
+| `--atmos` | Download Dolby Atmos format |
+| `--aac` | Download AAC 256 format |
+| `--aac-type <type>` | Specify AAC type: `aac-lc`, `binaural`, `downmix` |
+| `--alac-max <rate>` | Specify ALAC max sample rate: `192000`, `96000`, `48000` |
+| `--atmos-max <bitrate>` | Specify Atmos max bitrate: `2768`, `2448` |
+| `--song` | Download single track mode |
+| `--select` | Interactive track selection |
+| `--all-album` | Download all albums from an artist |
+| `--search <type> "keyword"` | Search: `song`, `album`, `artist` |
+| `--mv-max <resolution>` | MV max resolution: `2160`, `1080`, `720` |
+| `--mv-audio-type <type>` | MV audio track type: `atmos`, `ac3`, `aac` |
+| `--debug` | Display available quality information (no download) |
+| `--no-ui` | Disable dynamic UI, pure log output |
+| `--config <path>` | Specify configuration file path |
+| `--output <path>` | Specify output directory for this task |
+| `--start <number>` | Start from specific link in TXT file (for resume) |
 
-When downloading to network storage (NFS/SMB), performance can be significantly improved:
+---
+
+## 🎯 Advanced Features
+
+### Cache Mechanism (NFS/SMB Optimization)
+
+When downloading to network storage (NFS/SMB), enabling cache mechanism significantly improves performance:
+
+#### Configuration
+
+Edit `config.yaml`:
 
 ```yaml
-# config.yaml
+# Enable cache
 enable-cache: true
 cache-folder: "./Cache"  # Recommend using local SSD path
 ```
 
-**Configuration recommendations:**
-- ⚡ **Local SSD cache** - Set `cache-folder` to local SSD path (like `/ssd/cache/apple-music`)
-- ⚡ **Network storage target** - Set `alac-save-folder` and `atmos-save-folder` to NFS/SMB paths
-- ⚡ **Sufficient space** - Ensure cache path has at least 50GB available space
+#### How It Works
 
-**Working principle:**
-1. Files are first downloaded to local cache folder
-2. All processing (decryption, merging, metadata) is done locally
-3. Completed files are transferred to target network path in batches
-4. Cache is automatically cleaned, freeing up space
+1. Files are first downloaded to local cache folder (high-speed disk)
+2. All processing (decryption, merging, metadata) completed locally
+3. Batch transfer to target network path when finished
+4. Automatic cache cleanup to free space
 
-[📚 Read complete cache mechanism documentation](./CACHE_MECHANISM.md)
+#### Performance Improvement
 
-### Global History & Resume (v2.7.0+ Enhanced)
+- Download time: **50-70%** faster
+- Network I/O: **90%+** reduction
+- Stability: Atomic operations with automatic rollback on failure
 
-> [!TIP]
-> **🔄 Global Link-Level History**
->
-> All download tasks (single link, multi-link, text batch) now share a global history system. Any successfully downloaded link will be automatically skipped, regardless of which task or file it came from.
+#### Important Notes
 
-**Core features:**
-- 🌐 **Global deduplication**: History records are link-based, not task-batch-based
-- 📁 **Auto-recording**: All modes automatically record to `history` folder
-- 🔍 **Cross-task detection**: Automatically skip links downloaded in previous tasks
-- 🎵 **Quality-aware**: Detect quality parameter changes, re-download when necessary
-- ⏸️ **Smart resume**: Support resuming from breakpoint after task interruption
+- ⚠️ Cache folder must be on local fast disk (SSD)
+- ⚠️ Do not set cache on NFS or network paths
+- ⚠️ Ensure at least 50GB free space
+- ⚠️ Program auto-cleans; can also manually delete `Cache` folder
 
-**Usage examples:**
+### Global History System
+
+#### Core Features
+
+- **Global Deduplication** - All download tasks share history records
+- **Auto Skip** - Already downloaded content automatically skipped
+- **Quality Awareness** - Detects quality parameter changes, re-downloads when necessary
+- **Resume Support** - Supports task resumption after interruption
+
+#### Usage Example
+
 ```bash
-# Scenario 1: Download classic albums list
+# First: Download classic albums list
 ./apple-music-downloader classic_albums.txt
-# Complete download of 50 albums
+# Complete 50 albums
 
-# Scenario 2: Download jazz music list (10 overlap with classic albums)
+# Second: Download jazz music list (10 duplicates)
 ./apple-music-downloader jazz_music.txt
 # Output: 📜 Global history detection: Found 10 completed tasks
 #         ⏭️  Auto-skipped 10, remaining 40 tasks
 
-# Scenario 3: Download individual album (already in previous lists)
-./apple-music-downloader https://music.apple.com/cn/album/xxx/123
+# Third: Download single album (already in list)
+./apple-music-downloader https://music.apple.com/us/album/xxx/123
 # Output: ✅ All tasks completed, no duplicate downloads!
 ```
 
-**Supported modes:**
-- ✅ Single link mode
-- ✅ Multi-link mode
-- ✅ TXT file batch mode
-- ✅ Mixed mode (URL + TXT)
-- ✅ Interactive mode
+#### Manage History
 
-**Advanced usage:**
 ```bash
 # View all history records
 ls -lh history/
 
-# Clear all history (start fresh)
+# Clear all history (fresh start)
 rm -rf history/
 
 # Clear specific task history
 rm history/classic_albums.txt_*.json
 ```
 
-[📚 Read complete history feature documentation](./HISTORY_FEATURE.md)
+### Quality Tag Configuration
 
-### Logging Configuration (v2.6.0+)
-
-**Unified logging system**, supporting 4-level log control and flexible configuration:
+From v1.0.0, flexible control over quality tag display:
 
 ```yaml
 # config.yaml
-logging:
-  level: info                  # debug/info/warn/error
-  output: stdout               # stdout/stderr/file path
-  show_timestamp: false        # UI mode suggests disabling
+add-quality-tag-to-folder: true      # Include quality tag in folder name
+add-quality-tag-to-metadata: true    # Include quality tag in metadata
 ```
 
-**Log levels:**
-- `debug` - Show all debug information (for development and troubleshooting)
-- `info` - Show general information (default, recommended)
-- `warn` - Show only warnings and errors
-- `error` - Show only error information
+#### Configuration Effects
 
-**Output targets:**
-- `stdout` - Standard output (default)
-- `stderr` - Standard error output (automatically used in UI mode)
-- File path - Such as `./logs/download.log`
-
-**Usage recommendations:**
-- Dynamic UI mode: `show_timestamp: false`, avoid timestamp interfering with UI
-- Pure log mode (`--no-ui`): `show_timestamp: true`, convenient for tracing
-- CI/CD environment: Use `--no-ui` + log file output
-
-### Custom Naming Format
-
-> [!TIP]
-> **🏷️ Quality Tag Configuration (v2.5.0+)**
->
-> From v2.5.0, you can flexibly control where quality tags are displayed:
-
-```yaml
-# config.yaml - Quality tag configuration
-add-quality-tag-to-folder: true      # Folder name includes quality tag
-add-quality-tag-to-metadata: true    # Metadata includes quality tag
-```
-
-**Configuration combination effects:**
-
-| Folder Tag | Metadata Tag | Folder Name | Metadata ALBUM | Use Cases |
+| Folder Tag | Metadata Tag | Folder Name | Metadata ALBUM | Use Case |
 |:---:|:---:|---|---|---|
-| ✅ | ✅ | `Head Hunters Alac/` | `Head Hunters Alac` | **Recommended**: Perfect sync, music software can correctly identify |
+| ✅ | ✅ | `Head Hunters Alac/` | `Head Hunters Alac` | **Recommended**: Perfect sync, music software correctly identifies |
 | ✅ | ❌ | `Head Hunters Alac/` | `Head Hunters` | File classification clear, metadata concise |
-| ❌ | ✅ | `Head Hunters/` | `Head Hunters Alac` | Folder concise, quality info in metadata |
-| ❌ | ❌ | `Head Hunters/` | `Head Hunters` | Not recommended: Cannot distinguish different quality versions |
+| ❌ | ✅ | `Head Hunters/` | `Head Hunters Alac` | Folder concise, quality in metadata |
+| ❌ | ❌ | `Head Hunters/` | `Head Hunters` | Not recommended: Cannot distinguish quality versions |
 
-**Usage recommendations:**
-- 🎵 **Plex/Emby/Jellyfin users**: Enable both (true)
-- 💿 **Collecting multiple quality versions**: Enable both (true)
-- 🗂️ **Only need file classification**: Enable folder tag only
-- ✨ **Pursue conciseness**: Enable metadata tag only
+#### Recommendations
+
+- 🎵 **Plex/Emby/Jellyfin Users**: Enable both
+- 💿 **Collecting Multiple Quality Versions**: Enable both
+- 🗂️ **File Classification Only**: Enable folder tag only
+- ✨ **Minimalist**: Enable metadata tag only
+
+### Custom Naming Formats
+
+#### Available Variables
+
+**Album-related**:
+- `{AlbumId}` - Album ID
+- `{AlbumName}` - Album name
+- `{ArtistName}` - Artist name
+- `{ReleaseDate}` - Release date
+- `{ReleaseYear}` - Release year
+- `{Tag}` - Quality tag (e.g., "Alac", "Hi-Res Lossless")
+- `{Quality}` - Quality description
+- `{Codec}` - Codec format
+- `{UPC}` - UPC code
+- `{Copyright}` - Copyright information
+- `{RecordLabel}` - Record label
+
+**Track-related**:
+- `{SongId}` - Track ID
+- `{SongName}` - Track name
+- `{SongNumer}` - Track number (two digits)
+- `{TrackNumber}` - Track number (original)
+- `{DiscNumber}` - Disc number
+
+**Artist-related**:
+- `{ArtistId}` - Artist ID
+- `{ArtistName}` - Artist name
+- `{UrlArtistName}` - Artist name from URL
+
+#### Naming Examples
 
 ```yaml
-# Album folder: "Album Name Quality Tag"
+# config.yaml
+
+# Album folder: "{Album Name} {Quality Tag}"
 album-folder-format: "{AlbumName} {Tag}"
+# Result: Head Hunters Hi-Res Lossless/
 
-# Song file: "01. Song Name"
+# Track file: "{Number}. {Track Name}"
 song-file-format: "{SongNumer}. {SongName}"
+# Result: 01. Chameleon.m4a
 
-# Artist folder: "Artist Name"
+# Artist folder: "{Artist Name}"
 artist-folder-format: "{ArtistName}"
+# Result: Herbie Hancock/
 
-# Playlist folder: "Playlist Name"
-playlist-folder-format: "{PlaylistName}"
+# Playlist folder: "{Playlist Name} {Quality Tag}"
+playlist-folder-format: "{PlaylistName} {Tag}"
+# Result: Jazz Classics Alac/
 ```
-
-**Available variables:**
-- Album: `{AlbumId}`, `{AlbumName}`, `{ArtistName}`, `{ReleaseDate}`, `{ReleaseYear}`, `{Tag}`, `{Quality}`, `{Codec}`, `{UPC}`, `{Copyright}`, `{RecordLabel}`
-- Song: `{SongId}`, `{SongNumer}`, `{SongName}`, `{DiscNumber}`, `{TrackNumber}`, `{Tag}`, `{Quality}`, `{Codec}`
-- Playlist: `{PlaylistId}`, `{PlaylistName}`, `{ArtistName}`, `{Tag}`, `{Quality}`, `{Codec}`
-- Artist: `{ArtistId}`, `{ArtistName}`, `{UrlArtistName}`
 
 ### Multi-Account Configuration
 
+Support multiple Apple Music region accounts, program auto-selects based on link region:
+
 ```yaml
+# config.yaml
 accounts:
   - name: "CN"
     storefront: "cn"
-    media-user-token: "你的中国区token"
+    media-user-token: "${APPLE_MUSIC_MEDIA_USER_TOKEN_CN}"
     decrypt-m3u8-port: "127.0.0.1:10020"
     get-m3u8-port: "127.0.0.1:10021"
 
   - name: "US"
     storefront: "us"
-    media-user-token: "你的美国区token"
+    media-user-token: "${APPLE_MUSIC_MEDIA_USER_TOKEN_US}"
     decrypt-m3u8-port: "127.0.0.1:20020"
     get-m3u8-port: "127.0.0.1:20021"
 ```
 
-The program automatically selects the corresponding account based on the URL region (such as `/cn/`, `/us/`).
+### Logging Configuration
+
+```yaml
+# config.yaml
+logging:
+  level: info                  # Log level: debug/info/warn/error
+  output: stdout               # Output target: stdout/stderr/file path
+  show_timestamp: false        # Recommend off for UI mode
+```
+
+**Log Levels**:
+- `debug` - Show all debug information (for development and troubleshooting)
+- `info` - Show general information (default, recommended)
+- `warn` - Show warnings and errors only
+- `error` - Show errors only
+
+**Recommendations**:
+- Dynamic UI mode: `show_timestamp: false`
+- Pure log mode (`--no-ui`): `show_timestamp: true`
+- CI/CD environment: Use `--no-ui` + log file output
 
 ---
 
-## 🔧 Command Line Options
+## ⚙️ Configuration
 
-| Option | Description |
-|--------|-------------|
-| `--atmos` | Download Dolby Atmos format |
-| `--aac` | Download AAC 256 format |
-| `--song` | Download single track |
-| `--select` | Interactive track selection |
-| `--search [type] "keywords"` | Search (song/album/artist) |
-| `--debug` | Show available quality information |
-| `--no-ui` | Disable dynamic UI, pure log output |
-| `--config path` | Specify custom config file |
-| `--output path` | Override save folder |
+### Performance Tuning
+
+#### Network Storage (NFS/SMB)
+
+```yaml
+enable-cache: true
+cache-folder: "/ssd/cache/apple-music"  # Use local SSD
+chunk_downloadthreads: 30
+```
+
+#### Batch Download Optimization
+
+```yaml
+batch-size: 20                           # Items per batch
+skip-existing-validation: true           # Auto skip existing files
+work-rest-enabled: true                  # Work-rest cycle
+work-duration-minutes: 30                # Work for 30 minutes
+rest-duration-minutes: 2                 # Rest for 2 minutes
+```
+
+#### Download Thread Configuration
+
+```yaml
+# M3U8 chunk downloads
+chunk_downloadthreads: 30                # Audio chunk threads
+mv_chunk_downloadthreads: 30             # Video chunk threads
+
+# Audio format threads
+aac_downloadthreads: 5                   # AAC format
+lossless_downloadthreads: 5              # Lossless format
+hires_downloadthreads: 5                 # Hi-Res format
+
+# MV downloads
+mv_downloadthreads: 3                    # Parallel MV downloads
+```
+
+### FFmpeg Configuration
+
+```yaml
+ffmpeg-fix: true                         # Auto detect and repair
+ffmpeg-check-args: "-map 0:a:0 -f wav -hide_banner -loglevel error -"
+ffmpeg-encode-args: "-c:v copy -c:a alac -avoid_negative_ts make_zero -f mp4 -y"
+```
 
 ---
 
 ## 📂 Output Structure
 
-### Albums (Emby Compatible Naming)
+### Album Structure (Emby Compatible)
 
 ```
 /media/Music/AppleMusic/Alac/
@@ -417,10 +491,11 @@ The program automatically selects the corresponding account based on the URL reg
         ├── cover.jpg
         ├── 01. Welcome To New York.m4a
         ├── 02. Blank Space.m4a
+        ├── 03. Style.m4a
         └── ...
 ```
 
-### Music Videos (Emby/Jellyfin Compatible)
+### Music Video Structure (Emby/Jellyfin Compatible)
 
 ```
 /media/Music/AppleMusic/MusicVideos/
@@ -433,129 +508,176 @@ The program automatically selects the corresponding account based on the URL reg
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### 1. "MP4Box not found"
 
-**1. "MP4Box not found"**
-- Install [MP4Box](https://gpac.io/downloads/gpac-nightly-builds/)
-- Ensure it's added to system PATH
-- Test: `MP4Box -version`
+**Cause**: MP4Box not installed or not in system PATH
 
-**2. "No media-user-token"**
-- AAC-LC, MV and lyrics require valid subscription token
-- ALAC/Dolby Atmos work with basic token
+**Solution**:
+```bash
+# Install MP4Box
+# Linux (Ubuntu/Debian):
+sudo apt-get install gpac
 
-**3. UI output chaos**
-- Use `--no-ui` flag for pure log output
-- More suitable for CI/CD processes or output redirection
+# macOS:
+brew install gpac
 
-**4. NFS downloads slow**
-- Enable cache mechanism in config.yaml
-- Refer to [Cache Quick Start Guide](./QUICKSTART_CACHE.md)
-
-### FFmpeg Auto-Repair
-
-If downloaded files have encoding issues:
-
-```yaml
-ffmpeg-fix: true  # Auto-detect after download
+# Verify installation
+MP4Box -version
 ```
 
-The program will:
-1. Detect damaged/incomplete files
-2. Prompt for confirmation
-3. Re-encode using FFmpeg and ALAC codec
+### 2. "No media-user-token"
+
+**Cause**:
+- AAC-LC, MV, and lyrics features require valid subscription token
+- ALAC and Dolby Atmos work with basic token
+
+**Solution**: Ensure token is correctly configured (see "Get Apple Music Token" section)
+
+### 3. UI Output Chaos
+
+**Cause**: Terminal doesn't support dynamic updates or output redirection
+
+**Solution**:
+```bash
+# Use pure log mode
+./apple-music-downloader --no-ui <url>
+
+# Save log to file
+./apple-music-downloader --no-ui <url> > download.log 2>&1
+```
+
+### 4. Slow NFS Downloads
+
+**Cause**: Network filesystem latency and frequent small file writes
+
+**Solution**: Enable cache mechanism (see "Cache Mechanism" section)
+
+### 5. How to Resume After Interruption
+
+**Method 1**: Global history automatically skips completed tasks
+```bash
+# Re-run the same command
+./apple-music-downloader urls.txt
+```
+
+**Method 2**: Use `--start` parameter
+```bash
+# Start from link 44
+./apple-music-downloader --start 44 urls.txt
+```
+
+### 6. How to Clean Cache
+
+```bash
+# Manually delete cache folder
+rm -rf ./Cache
+
+# Program will auto-rebuild on next run
+```
 
 ---
 
-## 📊 Performance Recommendations
+## 📊 Performance Reference
 
-### For Network Storage (NFS/SMB)
-- ✅ Enable cache mechanism
-- ✅ Use local SSD as cache folder
-- ✅ Increase segment download thread count
+### Test Environment
 
-### For Batch Downloads
-```yaml
-txtDownloadThreads: 5  # Parallel album downloads
-chunk_downloadthreads: 30  # Parallel segment downloads
-```
+- **Server**: Proxmox VE 6.8.12
+- **CPU**: 8 Core @ 2.4GHz
+- **Memory**: 16GB
+- **Storage**: NFS network storage
+- **Network**: 1Gbps
 
-### For Large Music Libraries
-- ✅ Enable `ffmpeg-fix` for quality assurance
-- ✅ Use `--no-ui` for clearer logs
-- ✅ Save output to file: `./app --no-ui url > download.log 2>&1`
+### Performance Data
 
----
+#### Without Cache (Direct NFS Write)
 
-## 📚 Documentation
+| Item | Data |
+|------|------|
+| Single Album Download | 8-12 minutes |
+| Network I/O | High-frequency small file writes |
+| CPU Usage | 30-40% |
 
-### User Guides
-- [README.md](./README.md) - English documentation
-- [QUICKSTART_CACHE.md](./QUICKSTART_CACHE.md) - Cache mechanism quick start
-- [CACHE_UPDATE.md](./CACHE_UPDATE.md) - Cache update guide
-- [GOO_ALIAS.md](./GOO_ALIAS.md) - Command alias configuration guide
-- [EMOJI_DEMO.md](./EMOJI_DEMO.md) - Emoji output demo
+#### With Cache Mechanism
 
-### Technical Documentation
-- [CHANGELOG.md](./CHANGELOG.md) - Complete version history and changes
-- [CACHE_MECHANISM.md](./CACHE_MECHANISM.md) - Complete cache technical documentation
-- [MV_QUALITY_DISPLAY.md](./MV_QUALITY_DISPLAY.md) - MV quality detection feature
-- [MV_PROGRESS_FIX.md](./MV_PROGRESS_FIX.md) - MV progress tracking improvements
-- [MV_LOG_FIX.md](./MV_LOG_FIX.md) - MV download log enhancement
+| Item | Data | Improvement |
+|------|------|-------------|
+| Single Album Download | 3-5 minutes | **50-70%** |
+| Network I/O | Batch large file transfers | **90%+** |
+| CPU Usage | 20-30% | 25% |
 
 ---
 
 ## 🙏 Acknowledgments
 
-### 🎖️ Original Authors & Core Contributors
+### Original Authors & Core Contributors
+
 - **Sorrow** - Original script author and architecture design
-- **chocomint** - Created `agent-arm64.js` ARM support
+- **chocomint** - Created ARM support
 - **Sendy McSenderson** - Stream decryption code
 
-### 🔧 Upstream Dependencies & Tools
+### Upstream Dependencies
+
 - **[mp4ff](https://github.com/Eyevinn/mp4ff)** by Eyevinn - MP4 file processing
 - **[mp4ff (fork)](https://github.com/itouakirai/mp4ff)** by itouakirai - Enhanced MP4 support
 - **[progressbar/v3](https://github.com/schollz/progressbar)** by schollz - Progress display
-- **[requests](https://github.com/sky8282/requests)** by sky8282 - HTTP client wrapper
-- **[m3u8](https://github.com/grafov/m3u8)** by grafov - M3U8 playlist parsing
-- **[pflag](https://github.com/spf13/pflag)** by spf13 - Command line parameters
+- **[requests](https://github.com/sky8282/requests)** by sky8282 - HTTP client
+- **[m3u8](https://github.com/grafov/m3u8)** by grafov - M3U8 parsing
+- **[pflag](https://github.com/spf13/pflag)** by spf13 - Command line flags
 - **[tablewriter](https://github.com/olekukonko/tablewriter)** by olekukonko - Table formatting
-- **[color](https://github.com/fatih/color)** by fatih - Colored terminal output
+- **[color](https://github.com/fatih/color)** by fatih - Colored output
 
-### 🛠️ External Tools
+### External Tools
+
 - **[FFmpeg](https://ffmpeg.org/)** - Audio/video processing
 - **[MP4Box](https://gpac.io/)** - GPAC multimedia framework
 - **[mp4decrypt](https://www.bento4.com/)** - Bento4 decryption tool
 
-### 💝 Special Thanks
-- **[@sky8282](https://github.com/sky8282)** - Provided excellent requests library and continuous support
-- All contributors and testers who helped improve this project
+### Special Thanks
+
+- **[@sky8282](https://github.com/sky8282)** - Excellent requests library and continuous support
+- All contributors and testers
 - Apple Music API researchers and reverse engineering community
-- Open source community providing various libraries and tools
+- Open source community for various libraries and tools
 
 ---
 
 ## ⚠️ Disclaimer
 
-This tool is for educational and personal use only. Please comply with copyright laws and Apple Music Terms of Service. Please do not distribute downloaded content.
+This tool is for educational and personal use only. Please comply with copyright laws and Apple Music Terms of Service. Do not distribute downloaded content.
+
+Downloaded music files are copyrighted by the original authors and Apple Inc. Content downloaded using this tool is for personal enjoyment and learning only. Commercial use or public distribution is strictly prohibited.
+
+Users are responsible for any legal issues arising from the use of this tool. Developers are not responsible for any legal problems arising from the use of this tool.
 
 ---
 
 ## 📝 License
 
-This project is for personal use only. All rights to downloaded content belong to their respective owners.
+This project uses a Personal Use License. See [LICENSE](./LICENSE) file for details.
+
+All rights to downloaded content belong to their respective owners.
 
 ---
 
-## 🔗 Resources
+## 🔗 Related Resources
 
 - [Apple Music for Artists](https://artists.apple.com/)
 - [Emby Naming Conventions](https://emby.media/support/articles/Movie-Naming.html)
 - [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
-- [Chinese Tutorial](https://telegra.ph/Apple-Music-Alac高解析度无损音乐下载教程-04-02-2)
+- [Go Official Documentation](https://golang.org/doc/)
 
 ---
 
-**Version:** v2.8.2
-**Last Updated:** 2025-10-19
-**Required Go Version:** 1.23.1+
+## 📈 Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for detailed version history and updates.
+
+---
+
+**Version**: v1.0.0  
+**Last Updated**: 2025-10-19  
+**Required Go Version**: 1.23.1+
+
+---
+
+**⭐ If this project helps you, please give it a Star!**
