@@ -1,0 +1,52 @@
+# Apple Music 下载器项目核心文件忽略规则
+# 只托管项目本身的核心文件，不包含本地环境、工具、文档等
+
+# ========== 环境变量和敏感文件 ==========
+dev.env
+*.env.local
+.env
+.env.*
+*.env
+config.yaml.tmp
+*.tmp
+
+# ========== 本地开发环境 ==========
+# 排除所有本地环境相关目录和文件
+archive/
+Cache/
+dist/
+docs/
+history/
+tools/
+technical/
+.cursor/
+
+# ========== 构建产物 ==========
+build/
+apple-music-downloader
+*.exe
+
+# ========== 依赖和缓存 ==========
+vendor/
+node_modules/
+*.cache
+logs/
+*.log
+
+# ========== IDE和系统文件 ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ========== 备份和临时文件 ==========
+*.bak
+*~
+config.yaml.tmp
+
+# ========== 个人数据 ==========
+# 如果包含个人路径，请取消注释
+# /media/Music/AppleMusic/
+# /path/to/personal/music/
