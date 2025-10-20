@@ -258,6 +258,17 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 		return "", "", "", nil
 	}
 	var qualityForFilename string
+	
+	// 调试：打印所有可用的AAC流
+	if core.Dl_aac && (*core.Aac_type == "aac-binaural" || *core.Aac_type == "aac-downmix") {
+		logger.Debug("🔍 查找 %s 流，可用的variants:", *core.Aac_type)
+		for i, variant := range master.Variants {
+			if variant.Codecs == "mp4a.40.2" || variant.Codecs == "mp4a.40.5" {
+				logger.Debug("  [%d] Codec=%s, Audio=%s, Bandwidth=%d", i, variant.Codecs, variant.Audio, variant.Bandwidth)
+			}
+		}
+	}
+	
 	for _, variant := range master.Variants {
 		if core.Dl_atmos {
 			if variant.Codecs == "ec-3" && strings.Contains(variant.Audio, "atmos") {
@@ -276,14 +287,14 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 			}
 		} else if core.Dl_aac {
 			if variant.Codecs == "mp4a.40.2" || variant.Codecs == "mp4a.40.5" {
-				// Handle different AAC types including binaural and downmix
-				var matchedType string
+			// Handle different AAC types including binaural and downmix
+			var matchedType string
 
-				// Check for binaural streams (both regular AAC and HE-AAC)
-				if strings.Contains(variant.Audio, "-binaural") && *core.Aac_type == "binaural" {
-					matchedType = "binaural"
-				} else if strings.Contains(variant.Audio, "-downmix") && *core.Aac_type == "downmix" {
-					matchedType = "downmix"
+			// Check for binaural streams (both regular AAC and HE-AAC)
+			if strings.Contains(variant.Audio, "-binaural") && *core.Aac_type == "aac-binaural" {
+				matchedType = "aac-binaural"
+			} else if strings.Contains(variant.Audio, "-downmix") && *core.Aac_type == "aac-downmix" {
+				matchedType = "aac-downmix"
 				} else if *core.Aac_type == "aac-lc" {
 					// For AAC-LC, match regular stereo streams (not binaural/downmix)
 					if !strings.Contains(variant.Audio, "-binaural") && !strings.Contains(variant.Audio, "-downmix") {

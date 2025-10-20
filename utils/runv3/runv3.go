@@ -48,6 +48,13 @@ type PlaybackLicense struct {
 	Status     int    `json:"status"`
 }
 
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 func getPSSH(contentId string, kidBase64 string) (string, error) {
 	kidBytes, err := base64.StdEncoding.DecodeString(kidBase64)
 	if err != nil {
@@ -159,7 +166,14 @@ func GetWebplayback(adamId string, authtoken string, mutoken string, mvmode bool
 		if mvmode {
 			return obj.List[0].HlsPlaylistUrl, "", nil
 		}
-		// 遍历 Assets
+		
+		// 调试：打印所有可用的assets
+		logger.Debug("🔍 webPlayback返回的Assets:")
+		for i, asset := range obj.List[0].Assets {
+			logger.Debug("  [%d] Flavor=%s, URL=%s", i, asset.Flavor, asset.URL[:min(80, len(asset.URL))]+"...")
+		}
+		
+		// 遍历 Assets，查找匹配的flavor
 		for i := range obj.List[0].Assets {
 			if obj.List[0].Assets[i].Flavor == "28:ctrp256" {
 				kidBase64, fileurl, err := extractKidBase64(obj.List[0].Assets[i].URL, false)
@@ -569,15 +583,20 @@ func ExtMvDataWithDesc(keyAndUrls string, savePath string, description string) e
 		return err
 	}
 
-	cmd1 := exec.Command("mp4decrypt", "--key", key, tempFile.Name(), filepath.Base(savePath))
-	cmd1.Dir = filepath.Dir(savePath)
+	cmd1 := exec.Command("mp4decrypt", "--key", key, tempFile.Name(), savePath)
 	outlog, err := cmd1.CombinedOutput()
 	if err != nil {
-
 		return fmt.Errorf("decrypt failed: %w, output: %s", err, string(outlog))
-	} else {
-
 	}
+
+	// 清理可能产生的 out_ 前缀文件
+	outDir := filepath.Dir(savePath)
+	outFileName := "out_" + filepath.Base(savePath)
+	outFilePath := filepath.Join(outDir, outFileName)
+	if _, err := os.Stat(outFilePath); err == nil {
+		os.Remove(outFilePath)
+	}
+
 	return nil
 }
 

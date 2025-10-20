@@ -17,7 +17,6 @@ import (
 	"main/internal/api"
 	"main/internal/core"
 	"main/internal/downloader"
-	"main/internal/history"
 	"main/internal/logger"
 	"main/internal/parser"
 	"main/internal/progress"
@@ -168,7 +167,6 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 
 	var storefront, albumId string
 	var albumName string
-	_ = albumName // 用于历史记录
 
 	if strings.Contains(urlRaw, "/music-video/") {
 		handleSingleMV(urlRaw)
@@ -202,7 +200,7 @@ func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, curr
 		return "", "", err
 	}
 
-	// 获取专辑信息用于历史记录
+	// 获取专辑信息
 	mainAccount, err := core.GetAccountForStorefront(storefront)
 	if err == nil {
 		meta, err := api.GetMeta(albumId, mainAccount, storefront)
@@ -321,116 +319,27 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 		}
 	}
 
-	// 初始化历史记录系统（所有模式均启用）
-	var task *history.TaskHistory
-
-	// 初始化历史记录目录
-	if err := history.InitHistory(); err != nil {
-		core.SafePrintf("⚠️  初始化历史记录失败: %v\n", err)
-	}
-
-	// 检查全局历史记录，获取已完成的记录（包含音质信息）
-	// 新机制：历史记录以链接为单位，而非任务批次为单位
-	var err error
-	completedRecords, err := history.GetAllCompletedRecords()
-	if err != nil {
-		core.SafePrintf("⚠️  读取历史记录失败: %v\n", err)
-		completedRecords = make(map[string]*history.DownloadRecord)
-	}
-
-	// 获取当前音质哈希
-	currentQualityHash := history.GetQualityHash(
-		core.Config.GetM3u8Mode,
-		core.Config.AacType,
-		core.Config.AlacMax,
-		core.Config.AtmosMax,
-	)
-
-	// 过滤已完成的URL（支持音质参数对比）
-	skippedCount := 0
-	qualityChangedCount := 0
-	var remainingUrls []string
-
-	// 极简进度条样式显示
-	totalCount := len(finalUrls)
-	core.SafePrintf("🔍 正在对比历史记录")
-
-	for i, url := range finalUrls {
-		if oldRecord, exists := completedRecords[url]; exists {
-			// URL在历史记录中存在
-			if oldRecord.QualityHash == "" {
-				// 旧版本历史记录（无音质哈希），默认跳过
-				skippedCount++
-			} else if oldRecord.QualityHash == currentQualityHash {
-				// 音质参数完全相同，跳过
-				skippedCount++
-			} else {
-				// 音质参数不同，标记为需要重新下载（包括Atmos模式变化）
-				qualityChangedCount++
-				remainingUrls = append(remainingUrls, url)
-			}
-		} else {
-			// 新链接
-			remainingUrls = append(remainingUrls, url)
-		}
-
-		// 显示进度，每10个显示一次
-		if (i+1)%10 == 0 || i+1 == totalCount {
-			core.SafePrintf("....[%d/%d]", i+1, totalCount)
-		}
-	}
-
-	core.SafePrintf("\n")
-
-	// 根据结果显示不同消息
-	newLinksCount := len(remainingUrls) - qualityChangedCount
-	if totalCount == skippedCount {
-		core.SafePrintf("🔍 对比完成：均已完成下载\n")
-	} else if qualityChangedCount > 0 {
-		core.SafePrintf("🔍 对比完成：%d 张未完成/不完整，即将重新下载\n", qualityChangedCount)
-	} else {
-		core.SafePrintf("🔍 对比完成：发现 %d 个新链接\n", newLinksCount)
-	}
-
-	finalUrls = remainingUrls
+	// 准备下载任务
 	totalTasks = len(finalUrls)
-
-	if totalTasks == 0 {
-		core.SafePrintf("✅ 所有任务都已完成，无需重复下载！\n")
-		return
-	}
-
-	// 创建新任务（所有模式均创建历史记录）
-	task, err = history.NewTask(taskFile, totalTasks)
-	if err != nil {
-		core.SafePrintf("⚠️  创建任务记录失败: %v\n", err)
-	}
 
 	// 保存原始总数用于显示
 	originalTotalTasks := len(initialUrls)
 
 	if isBatch {
-		core.SafePrintf("\n📋 ========== 开始下载任务 ==========\n")
+		core.SafePrintf("\n📋 ===== 开始下载任务 =====\n")
 		if len(initialUrls) != totalTasks {
-			core.SafePrintf("📝 预处理完成: %d 个链接 → %d 个任务\n", len(initialUrls), originalTotalTasks)
+			core.SafePrintf("📝 预处理完成: %d → %d 任务\n", len(initialUrls), originalTotalTasks)
 		} else {
 			core.SafePrintf("📝 任务总数: %d\n", originalTotalTasks)
 		}
 		if core.StartFrom > 0 {
-			core.SafePrintf("📝 实际下载: 第 %d 至第 %d 个（共 %d 个）\n", core.StartFrom, originalTotalTasks, totalTasks)
+			core.SafePrintf("📝 实际下载: 第 %d-%d 个（共 %d 个）\n", core.StartFrom, originalTotalTasks, totalTasks)
 		}
-		core.SafePrintf("⚡ 执行模式: 串行模式 \n")
-		core.SafePrintf("📦 专辑内并发: 由配置文件控制\n")
-		if task != nil {
-			core.SafePrintf("📜 历史记录: 全局 \n")
-		}
-		core.SafePrintf("====================================\n\n")
+		core.SafePrintf("⚡ 执行模式: 串行模式\n")
+		core.SafePrintf("📦 专辑内并发: 由配置控制\n")
+		core.SafePrintf("=============================\n")
 	} else {
 		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n", originalTotalTasks)
-		if task != nil {
-			core.SafePrintf("📜 历史记录: 全局 \n")
-		}
-		core.SafePrintf("--------------------\n")
 	}
 
 	// 批量模式：串行执行（按链接顺序依次下载）
@@ -440,10 +349,10 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 	var workStartTime time.Time
 	if isBatch && core.Config.WorkRestEnabled {
 		workStartTime = time.Now()
-		core.SafePrintf("⏰ 工作-休息循环已启用: 工作 %d 分钟，休息 %d 分钟\n",
+		core.SafePrintf("⏰ 工作-休息循环: 工作 %d 分钟 / 休息 %d 分钟\n",
 			core.Config.WorkDurationMinutes,
 			core.Config.RestDurationMinutes)
-		core.SafePrintf("⏱️  工作开始时间: %s\n\n", workStartTime.Format("15:04:05"))
+		core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
 	}
 
 	for i, urlToProcess := range finalUrls {
@@ -451,42 +360,11 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
 
-		albumId, albumName, err := processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
-
-		// 记录到历史
-		if task != nil && albumId != "" {
-			status := "success"
-			errorMsg := ""
-			if err != nil {
-				status = "failed"
-				errorMsg = err.Error()
-			}
-
-			history.AddRecord(history.DownloadRecord{
-				URL:        urlToProcess,
-				AlbumID:    albumId,
-				AlbumName:  albumName,
-				Status:     status,
-				DownloadAt: time.Now(),
-				ErrorMsg:   errorMsg,
-
-				// 音质参数
-				QualityHash: history.GetQualityHash(
-					core.Config.GetM3u8Mode,
-					core.Config.AacType,
-					core.Config.AlacMax,
-					core.Config.AtmosMax,
-				),
-				GetM3u8Mode: core.Config.GetM3u8Mode,
-				AacType:     core.Config.AacType,
-				AlacMax:     core.Config.AlacMax,
-				AtmosMax:    core.Config.AtmosMax,
-			})
-		}
+		_, _, _ = processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
 
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
-			core.SafePrintf("\n%s\n\n", strings.Repeat("=", 80))
+			core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
 		}
 
 		// 工作-休息循环检查（在任务完成后）
@@ -502,14 +380,13 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 				yellow := color.New(color.FgYellow)
 				green := color.New(color.FgGreen)
 
-				core.SafePrintf("\n")
-				core.SafePrintf(strings.Repeat("=", 80) + "\n")
-				cyan.Printf("⏸️  工作时长已达 %d 分钟，进入休息时间\n", core.Config.WorkDurationMinutes)
-				yellow.Printf("😴 休息 %d 分钟...\n", core.Config.RestDurationMinutes)
-				core.SafePrintf("📊 已完成: %d/%d 个任务\n", i+1, totalTasks)
+				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				cyan.Printf("⏸️  已工作 %d 分钟，进入休息\n", core.Config.WorkDurationMinutes)
+				yellow.Printf("😴 休息 %d 分钟\n", core.Config.RestDurationMinutes)
+				core.SafePrintf("📊 已完成: %d/%d\n", i+1, totalTasks)
 				core.SafePrintf("⏰ 当前时间: %s\n", time.Now().Format("15:04:05"))
-				core.SafePrintf("⏱️  预计恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
-				core.SafePrintf(strings.Repeat("=", 80) + "\n\n")
+				core.SafePrintf("⏱️  恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
+				core.SafePrintf("%s\n", strings.Repeat("=", 60))
 
 				// 休息倒计时（每30秒提示一次）
 				restTicker := time.NewTicker(30 * time.Second)
@@ -536,23 +413,14 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 
 				// 休息结束，重新开始计时
 				workStartTime = time.Now()
-				core.SafePrintf("\n")
-				core.SafePrintf(strings.Repeat("=", 80) + "\n")
-				green.Printf("✅ 休息完毕，继续下载任务！\n")
-				core.SafePrintf("⏱️  新一轮工作开始时间: %s\n", workStartTime.Format("15:04:05"))
-				core.SafePrintf(strings.Repeat("=", 80) + "\n\n")
+				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				green.Printf("✅ 休息完毕，继续任务\n")
+				core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
+				core.SafePrintf("%s\n", strings.Repeat("=", 60))
 			}
 		}
 	}
 
-	// 保存历史记录
-	if task != nil {
-		if err := history.SaveTask(); err != nil {
-			core.SafePrintf("⚠️  保存历史记录失败: %v\n", err)
-		} else {
-			core.SafePrintf("\n📜 历史记录已保存至全局历史记录文件\n")
-		}
-	}
 }
 
 func main() {
@@ -625,40 +493,16 @@ func main() {
 		return
 	}
 
-	// 设置信号处理，确保程序退出时清理资源并保存历史记录
+	// 设置信号处理，确保程序退出时清理资源
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-sigChan
 		yellow := color.New(color.FgYellow)
-		green := color.New(color.FgGreen)
 		yellow.Printf("\n\n⚠️  收到终止信号，正在清理资源...\n")
-
-		// 1. 保存历史记录（如果有活动任务）
-		currentTask := history.GetCurrentTask()
-		if currentTask != nil {
-			yellow.Printf("💾 正在保存历史记录...\n")
-			if err := history.SaveTask(); err != nil {
-				yellow.Printf("⚠️  保存历史记录失败: %v\n", err)
-			} else {
-				green.Printf("✅ 历史记录已保存至全局历史记录文件\n")
-			}
-		}
-
-		// 2. 清理完成
-
 		yellow.Printf("👋 再见！\n")
 		os.Exit(0)
 	}()
-
-	// 初始化全局历史记录
-	if err := history.InitGlobalHistory(); err != nil {
-		yellow := color.New(color.FgYellow)
-		yellow.Printf("⚠️  初始化全局历史记录失败: %v\n", err)
-		yellow.Printf("将回退到使用旧的任务历史文件\n\n")
-	} else {
-		logger.Debug("Global history initialized")
-	}
 
 	// 创建进度通知器并注册UI监听器
 	progressNotifier := progress.NewNotifier()

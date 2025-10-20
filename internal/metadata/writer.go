@@ -26,9 +26,9 @@ func getQualityString(audioTraits []string) string {
 	// Priority 1: Respect user's explicit quality choice
 	if core.Dl_atmos {
 		return utils.FormatQualityTag("Dolby Atmos")
-	} else if core.Dl_aac && core.Aac_type != nil && *core.Aac_type == "binaural" {
+	} else if core.Dl_aac && core.Aac_type != nil && *core.Aac_type == "aac-binaural" {
 		return utils.FormatQualityTag("Aac Binaural")
-	} else if core.Dl_aac && core.Aac_type != nil && *core.Aac_type == "downmix" {
+	} else if core.Dl_aac && core.Aac_type != nil && *core.Aac_type == "aac-downmix" {
 		return utils.FormatQualityTag("Aac Downmix")
 	} else if core.Dl_aac && core.Aac_type != nil && *core.Aac_type == "aac-lc" {
 		return utils.FormatQualityTag("Aac 256")

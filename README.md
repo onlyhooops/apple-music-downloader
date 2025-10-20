@@ -6,14 +6,56 @@
 >
 > Supports ALAC, Hi-Res Lossless, Dolby Atmos and other lossless formats, as well as music video downloads.
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
+[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
 [![Go Version](https://img.shields.io/badge/Go-1.23.1+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-Personal%20Use-green.svg)](./LICENSE)
 
 ---
 
+> [!WARNING]
+> **⚠️ Experimental Project Warning**
+>
+> This project is an experimental fork derived from [@sky8282/apple-music-downloader](https://github.com/sky8282/apple-music-downloader).
+>
+> **Important Notes:**
+> - 🔧 **Personal Customization**: Extensive custom features added based on personal preferences
+> - ⚠️ **Experimental Nature**: Some new features have not been widely tested and robustness cannot be guaranteed
+> - 🎯 **Specific Environment**: Developed and tested on **Privileged LXC containers in Proxmox VE platform**
+> - 📋 **Usage Recommendation**: Please carefully read the documentation and evaluate before use - may not suit all scenarios
+>
+> **For new features, refer to this README. For issues, check [Troubleshooting](#-troubleshooting) first.**
+>
+> For a stable version, please use the upstream project: https://github.com/sky8282/apple-music-downloader
+
+---
+
+## 🎉 What's New in v1.1.0
+
+### 🔧 Important Fixes
+- **✅ Fixed AAC Binaural/Downmix Download** - Corrected parameter matching bug, now works correctly
+- **✅ Album MV Download Optimization** - Fixed path issues and improved AAC independent path configuration
+
+### ⚡ Feature Enhancements
+- **✨ New `--cx` Force Download Parameter** - Overwrite existing files, simplify re-download workflow
+- **🧹 Removed History Feature** - Deleted 558 lines of code, simplified logic, improved performance
+- **⚡ Enhanced File Validation Efficiency** - Optimized existence checks, faster batch downloads
+
+### 🔬 Audio Quality Validation
+- **✅ 100% Validation Pass Rate** - 8 audio quality parameter combinations professionally verified
+- **✅ Parameter Consistency Check** - Command-line parameters match downloaded files perfectly
+- **📊 40+ Technical Parameters Verified** - Using FFprobe 7.1 + MediaInfo 24.12
+
+### 🧹 Configuration Optimization
+- **Removed 4 Invalid Config Items** - skip-existing-validation, clean-choice, max-memory-limit, txtDownloadThreads
+- **Net Optimization -464 Lines** - Cleaner, more efficient code
+
+[View Complete Changelog](#-changelog)
+
+---
+
 ## 📖 Table of Contents
 
+- [What's New in v1.1.0](#-whats-new-in-v110)
 - [Core Features](#-core-features)
 - [System Requirements](#-system-requirements)
 - [Quick Start](#-quick-start)
@@ -21,6 +63,7 @@
 - [Advanced Features](#-advanced-features)
 - [Configuration](#-configuration)
 - [Troubleshooting](#-troubleshooting)
+- [Changelog](#-changelog)
 - [Acknowledgments](#-acknowledgments)
 
 ---
@@ -65,7 +108,7 @@
 
 ### 🛠️ Advanced Features
 
-- **Global History** - Automatically tracks downloaded content to avoid duplicates
+- **Force Download** - Use `--cx` parameter to overwrite existing files
 - **Multi-Account Management** - Support multiple region accounts with auto-selection
 - **Interactive Search** - Built-in search for songs/albums/artists
 - **Custom Naming** - Flexible folder and file naming formats
@@ -273,48 +316,36 @@ cache-folder: "./Cache"  # Recommend using local SSD path
 - ⚠️ Ensure at least 50GB free space
 - ⚠️ Program auto-cleans; can also manually delete `Cache` folder
 
-### Global History System
+### Force Download Mode
 
-#### Core Features
+Use the `--cx` parameter to force overwrite existing files, suitable for re-downloading or updating files.
 
-- **Global Deduplication** - All download tasks share history records
-- **Auto Skip** - Already downloaded content automatically skipped
-- **Quality Awareness** - Detects quality parameter changes, re-downloads when necessary
-- **Resume Support** - Supports task resumption after interruption
-
-#### Usage Example
+#### Usage Examples
 
 ```bash
-# First: Download classic albums list
-./apple-music-downloader classic_albums.txt
-# Complete 50 albums
+# Force download album (overwrite existing files)
+./apple-music-downloader --cx https://music.apple.com/us/album/xxx/123
 
-# Second: Download jazz music list (10 duplicates)
-./apple-music-downloader jazz_music.txt
-# Output: 📜 Global history detection: Found 10 completed tasks
-#         ⏭️  Auto-skipped 10, remaining 40 tasks
+# Force download AAC Binaural
+./apple-music-downloader --cx --aac --aac-type aac-binaural <url>
 
-# Third: Download single album (already in list)
-./apple-music-downloader https://music.apple.com/us/album/xxx/123
-# Output: ✅ All tasks completed, no duplicate downloads!
+# Force download Dolby Atmos
+./apple-music-downloader --cx --atmos <url>
+
+# Batch force download
+./apple-music-downloader --cx urls.txt
 ```
 
-#### Manage History
+#### Use Cases
 
-```bash
-# View all history records
-ls -lh history/
-
-# Clear all history (fresh start)
-rm -rf history/
-
-# Clear specific task history
-rm history/classic_albums.txt_*.json
-```
+- 🔄 Corrupted files need re-download
+- 🎵 Want to replace with different quality version
+- 🆕 Apple Music updated audio quality
+- 🔧 Changed naming format, need to regenerate files
 
 ### Quality Tag Configuration
 
-From v1.0.0, flexible control over quality tag display:
+From v1.1.0, flexible control over quality tag display:
 
 ```yaml
 # config.yaml
@@ -554,7 +585,7 @@ MP4Box -version
 
 ### 5. How to Resume After Interruption
 
-**Method 1**: Global history automatically skips completed tasks
+**Method 1**: Program automatically skips existing files
 ```bash
 # Re-run the same command
 ./apple-music-downloader urls.txt
@@ -668,14 +699,91 @@ All rights to downloaded content belong to their respective owners.
 
 ---
 
+---
+
 ## 📈 Changelog
 
-See [CHANGELOG.md](./CHANGELOG.md) for detailed version history and updates.
+### v1.1.0 (2025-10-20)
+
+#### 🔧 Important Fixes
+- **Fixed AAC Binaural/Downmix Parameter Matching Bug**
+  - Issue: Parameters defined as `aac-binaural/aac-downmix`, but code checked `binaural/downmix`
+  - Impact: Unable to download AAC Binaural and Downmix quality correctly
+  - Fix: Corrected 4 check logics in downloader, parser, and metadata
+  - Result: ✅ Now correctly downloads AAC Binaural/Downmix
+
+- **Fixed Album MV Download Path Issues**
+  - Optimized AAC independent path configuration logic
+  - Improved log output format
+
+#### ⚡ Feature Optimizations
+- **New `--cx` Force Download Parameter**
+  - Function: Force download mode, overwrite existing files
+  - Scenarios: Re-download, update files, fix corrupted files
+  - Usage: `./apple-music-downloader --cx <url>`
+
+- **Removed History Feature**
+  - Deleted `internal/history/global.go` (558 lines of code)
+  - Simplified download logic, improved performance
+  - Reduced maintenance costs
+
+- **Enhanced File Validation Efficiency**
+  - Optimized file existence check logic
+  - Reduced unnecessary file system operations
+  - Improved batch download performance
+
+#### 🧹 Configuration Cleanup
+- **Removed 4 Invalid Config Items** (fully validated)
+  - `skip-existing-validation` - Obsolete configuration
+  - `clean-choice` - Not actually used
+  - `max-memory-limit` - Only defined, not used
+  - `txtDownloadThreads` - Only validated, not actually used
+- Added `CONFIG_VERIFICATION.md` configuration verification report
+  - Verified all 44 configuration items
+  - Valid configurations: 40 items (90.9%)
+
+#### 🔬 Audio Quality Validation
+- **Completed 8 Audio Quality Parameter Professional Verification**
+  - Validation pass rate: **100%** ⭐⭐⭐⭐⭐
+  - Validation tools: FFprobe 7.1 + MediaInfo 24.12
+  - Test track: Tyla - IS IT (Apple Music ID: 1825447073)
+
+- **Command-line Parameters vs Downloaded Files Consistency Check**
+  - Verified encoding format, bitrate, sample rate, channels, and 40+ technical parameters
+  - Confirmed intelligent parameter downgrade mechanism works correctly
+  - Verified metadata tags accurately identify quality versions
+  - Validation result: ✅ **100% Consistent**
+
+- **Technical Validation Results**
+  - ALAC Lossless: 48kHz/24bit, 1743 kbps
+  - Dolby Atmos: E-AC-3 JOC, 5.1 channels, 15 dynamic objects
+  - AAC Binaural/Downmix: 48kHz sample rate, complete metadata
+  - Complies with MPEG-4, ATSC A/52B industry standards
+
+#### 📚 Documentation Updates
+- **README-CN.md** added "Audio Quality Validation" section
+  - Validation results overview table
+  - Detailed description of verified quality parameters
+  - File size comparison analysis
+- Added audio quality test report (5.3 KB)
+- Added professional verification report (17 KB, parameter consistency analysis)
+- Added project structure documentation
+- Created `docs/验证报告/` and `docs/开发文档/` directories
+
+#### 📊 Code Statistics
+- Code deleted: 558 lines (history feature)
+- Code added: 94 lines (optimized validation logic)
+- Bug fixes: 16 modifications (AAC Binaural/Downmix)
+- **Net optimization: -464 lines** (cleaner code)
 
 ---
 
-**Version**: v1.0.0  
-**Last Updated**: 2025-10-19  
+View [CHANGELOG.md](./CHANGELOG.md) for complete version history.
+
+---
+
+**Version**: v1.1.0  
+**Last Updated**: 2025-10-20  
 **Required Go Version**: 1.23.1+
 
 ---

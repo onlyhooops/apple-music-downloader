@@ -28,15 +28,14 @@ type ConfigSet struct {
 	CoverFormat             string        `yaml:"cover-format"`
 	AlacSaveFolder          string        `yaml:"alac-save-folder"`
 	AtmosSaveFolder         string        `yaml:"atmos-save-folder"`
+	AacSaveFolder           string        `yaml:"aac-save-folder"`
 	MVSaveFolder            string        `yaml:"mv-save-folder"`
 	AlbumFolderFormat       string        `yaml:"album-folder-format"`
 	PlaylistFolderFormat    string        `yaml:"playlist-folder-format"`
 	ArtistFolderFormat      string        `yaml:"artist-folder-format"`
 	SongFileFormat          string        `yaml:"song-file-format"`
 	ExplicitChoice          string        `yaml:"explicit-choice"`
-	CleanChoice             string        `yaml:"clean-choice"`
 	AppleMasterChoice       string        `yaml:"apple-master-choice"`
-	MaxMemoryLimit          int           `yaml:"max-memory-limit"`
 	GetM3u8Mode             string        `yaml:"get-m3u8-mode"`
 	GetM3u8FromDevice       bool          `yaml:"get-m3u8-from-device"`
 	AacType                 string        `yaml:"aac-type"`
@@ -59,11 +58,9 @@ type ConfigSet struct {
 	FfmpegFix               bool          `yaml:"ffmpeg-fix"`
 	FfmpegCheckArgs         string        `yaml:"ffmpeg-check-args"`
 	FfmpegEncodeArgs        string        `yaml:"ffmpeg-encode-args"`
-	TxtDownloadThreads      int           `yaml:"txtDownloadThreads"`
 	EnableCache             bool          `yaml:"enable-cache"`
 	CacheFolder             string        `yaml:"cache-folder"`
 	BatchSize               int           `yaml:"batch-size"`               // 分批处理的批次大小，0表示不分批
-	SkipExistingValidation  bool          `yaml:"skip-existing-validation"` // 自动跳过已存在文件的校验
 	WorkRestEnabled         bool          `yaml:"work-rest-enabled"`        // 启用工作-休息循环
 	WorkDurationMinutes     int           `yaml:"work-duration-minutes"`    // 工作时长（分钟）
 	RestDurationMinutes     int           `yaml:"rest-duration-minutes"`    // 休息时长（分钟）

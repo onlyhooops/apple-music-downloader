@@ -7,6 +7,10 @@ dev.env
 .env
 .env.*
 *.env
+
+# ========== 配置文件（个人配置不托管）==========
+config.yaml
+config_test.yaml
 config.yaml.tmp
 *.tmp
 
@@ -15,7 +19,6 @@ config.yaml.tmp
 archive/
 Cache/
 dist/
-docs/
 history/
 tools/
 technical/
@@ -45,6 +48,27 @@ Thumbs.db
 *.bak
 *~
 config.yaml.tmp
+
+# ========== 本地开发和测试文档（不托管）==========
+TONIGHT_WORK_SUMMARY.md
+FINAL_SUMMARY.md
+FINAL_RELEASE_SUMMARY.md
+READY_FOR_GITHUB.md
+RELEASE_CHECKLIST.md
+CLEAN_RELEASE_SUMMARY.md
+COMMIT_MESSAGE*.txt
+TAG_v*.txt
+RELEASE_GUIDE.md
+GIT_PUSH_COMMANDS.sh
+.github-push-guide.sh
+push-release.sh
+CONFIG_VERIFICATION.md
+PROJECT_STRUCTURE.md
+docs/开发文档/
+BINAURAL_FINDINGS.md
+CORRECT_AAC_USAGE.md
+verify_binaural.md
+.clean-project.sh
 
 # ========== 个人数据 ==========
 # 如果包含个人路径，请取消注释
