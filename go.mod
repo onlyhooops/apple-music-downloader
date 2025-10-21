@@ -2,8 +2,6 @@ module main
 
 go 1.24.0
 
-toolchain go1.24.8
-
 require (
 	github.com/Eyevinn/mp4ff v0.50.0
 	github.com/aead/cmac v0.0.0-20160719120800-7af84192f0b1

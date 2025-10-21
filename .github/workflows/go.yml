@@ -15,14 +15,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.1'
+        go-version: 'stable'
     - name: Build
       run: |
         go build -o main.exe -v ./main.go
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp config.yaml alac/
         cp config.yaml.example alac/
         cp dev.env.example alac/
         cp README.md alac/
@@ -41,14 +40,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.1'
+        go-version: 'stable'
     - name: Build
       run: |
         go build -o main -v ./main.go
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp config.yaml alac/
         cp config.yaml.example alac/
         cp dev.env.example alac/
         cp README.md alac/
@@ -67,14 +65,13 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.23.1'
+        go-version: 'stable'
     - name: Build
       run: |
         go build -o main -v ./main.go
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp config.yaml alac/
         cp config.yaml.example alac/
         cp dev.env.example alac/
         cp README.md alac/
