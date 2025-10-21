@@ -22,10 +22,11 @@ jobs:
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp agent.js alac/
-        cp agent-arm64.js alac/
         cp config.yaml alac/
+        cp config.yaml.example alac/
+        cp dev.env.example alac/
         cp README.md alac/
+        cp README-CN.md alac/
         cp main.exe alac/
     - name: Upload apple-music-downloader
       uses: actions/upload-artifact@v4
@@ -47,8 +48,6 @@ jobs:
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp agent.js alac/
-        cp agent-arm64.js alac/
         cp config.yaml alac/
         cp config.yaml.example alac/
         cp dev.env.example alac/
@@ -75,8 +74,6 @@ jobs:
     - name: Create a new directory and copy files
       run: |
         mkdir -p alac
-        cp agent.js alac/
-        cp agent-arm64.js alac/
         cp config.yaml alac/
         cp config.yaml.example alac/
         cp dev.env.example alac/
