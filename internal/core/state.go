@@ -94,7 +94,12 @@ func LoadConfig(configPath string) error {
 	if err != nil {
 		return err
 	}
-	err = yaml.Unmarshal(data, &Config)
+
+	// 替换环境变量引用（支持 ${VAR_NAME} 格式）
+	configContent := string(data)
+	configContent = os.ExpandEnv(configContent)
+
+	err = yaml.Unmarshal([]byte(configContent), &Config)
 	if err != nil {
 		return err
 	}

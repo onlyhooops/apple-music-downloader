@@ -33,6 +33,33 @@ var (
 	GitCommit = "unknown" // Git提交哈希
 )
 
+// loadDevEnv 自动加载 dev.env 文件中的环境变量
+func loadDevEnv() {
+	envFile := "dev.env"
+	data, err := os.ReadFile(envFile)
+	if err != nil {
+		// dev.env 不存在是正常的，不报错
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			// 移除引号
+			value = strings.Trim(value, "\"'")
+			os.Setenv(key, value)
+		}
+	}
+}
+
 func handleSingleMV(urlRaw string) {
 	if core.Debug_mode {
 		return
@@ -50,13 +77,19 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Lock()
 	core.Counter.Total++
 	core.SharedLock.Unlock()
+
 	if len(accountForMV.MediaUserToken) <= 50 {
+		logger.Error("MV 下载失败: MediaUserToken 无效或过短（长度: %d）", len(accountForMV.MediaUserToken))
+		logger.Info("提示: 请确保在 dev.env 中配置了有效的 APPLE_MUSIC_MEDIA_USER_TOKEN_CN")
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
 		return
 	}
+
 	if _, err := exec.LookPath("mp4decrypt"); err != nil {
+		logger.Error("MV 下载失败: 未找到 mp4decrypt 工具")
+		logger.Info("提示: 请安装 mp4decrypt (https://www.bento4.com/downloads/)")
 		core.SharedLock.Lock()
 		core.Counter.Error++
 		core.SharedLock.Unlock()
@@ -116,8 +149,16 @@ func handleSingleMV(urlRaw string) {
 		// 移动文件
 		core.SafePrintf("\n📤 正在从缓存转移MV文件到目标位置...\n")
 		if moveErr := downloader.SafeMoveFile(mvOutPath, finalMvPath); moveErr != nil {
-			logger.Error("从缓存移动MV文件失败: %v", moveErr)
-			err = moveErr
+			// 检查是否是文件已存在的情况
+			if strings.Contains(moveErr.Error(), "目标文件已存在") {
+				logger.Info("✅ MV 文件已存在，跳过下载")
+				logger.Info("💾 保存路径: %s", finalMvPath)
+				// 文件已存在视为成功，清理缓存
+				os.RemoveAll(cachePath)
+			} else {
+				logger.Error("从缓存移动MV文件失败: %v", moveErr)
+				err = moveErr
+			}
 		} else {
 			core.SafePrintf("📥 MV文件转移完成！\n")
 			core.SafePrintf("💾 保存路径: %s\n", finalMvPath)
@@ -424,6 +465,9 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 }
 
 func main() {
+	// 自动加载 dev.env 文件（如果存在）
+	loadDevEnv()
+
 	// 打印版本信息
 	cyan := color.New(color.FgCyan, color.Bold)
 	yellow := color.New(color.FgYellow)
