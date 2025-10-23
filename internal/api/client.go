@@ -100,6 +100,16 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 			return nil, err
 		}
 		for _, album := range obj.Data {
+			// 如果启用了 singles-only 模式，只保留单曲专辑
+			if core.Dl_singles_only && relationship == "albums" {
+				isSingle := album.Attributes.IsSingle ||
+					strings.Contains(album.Attributes.Name, "- Single") ||
+					strings.Contains(album.Attributes.Name, " Single") ||
+					strings.Contains(album.Attributes.Name, "单曲")
+				if !isSingle {
+					continue // 跳过非单曲专辑
+				}
+			}
 			options = append(options, []string{album.Attributes.Name, album.Attributes.ReleaseDate, album.ID, album.Attributes.URL})
 		}
 		Num = Num + 100
@@ -137,6 +147,11 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 	table.Render()
 	if core.Artist_select {
 		logger.Info("You have selected all options:")
+		return urls, nil
+	}
+	// 如果启用了 singles-only 模式，自动选择所有单曲
+	if core.Dl_singles_only && relationship == "albums" {
+		logger.Info("🎵 Singles-Only 模式：自动选择所有 %d 个单曲", len(urls))
 		return urls, nil
 	}
 	reader := bufio.NewReader(os.Stdin)

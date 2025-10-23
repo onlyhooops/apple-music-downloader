@@ -28,7 +28,7 @@ import (
 
 // 版本信息（编译时通过 ldflags 注入）
 var (
-	Version   = "dev"     // 版本号
+	Version   = "v1.2.0"  // 版本号
 	BuildTime = "unknown" // 编译时间
 	GitCommit = "unknown" // Git提交哈希
 )

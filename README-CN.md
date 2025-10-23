@@ -6,7 +6,7 @@
 >
 > 支持 ALAC、Hi-Res Lossless、Dolby Atmos 等多种无损格式，以及音乐视频下载。
 
-[![版本](https://img.shields.io/badge/版本-v1.1.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
+[![版本](https://img.shields.io/badge/版本-v1.2.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
 [![Go版本](https://img.shields.io/badge/Go-1.23.1+-00ADD8.svg)](https://golang.org/)
 [![许可证](https://img.shields.io/badge/许可证-个人使用-green.svg)](./LICENSE)
 
@@ -29,25 +29,29 @@
 
 ---
 
-## 🎉 v1.1.0 新特性
+## 🎉 v1.2.0 新特性
 
-### 🔧 重要修复
-- **✅ 修复 AAC Binaural/Downmix 下载问题** - 修正参数匹配 BUG，现可正确下载
-- **✅ 优化专辑 MV 下载** - 修复路径问题，改进 AAC 独立路径配置
+### 🎵 虚拟 Singles 专辑
+- **单曲自动整合** - 艺术家的所有单曲作品自动整合到统一的虚拟 "Singles" 专辑中
+- **智能曲目编号** - 每首单曲按顺序编号（01、02、03...），而不是全部为 "01"
+- **保留原始封面** - 每首单曲的 m4a 文件内嵌其原本的封面图片
+- **合作作品处理** - 合作单曲归属于主要艺术家（如 "Tate McRae & Khalid" → Tate McRae 的 Singles）
+- **可配置开关** - 通过 config.yaml 中的 `enable-virtual-singles` 启用/禁用
 
-### ⚡ 功能增强
-- **✨ 新增 `--cx` 强制下载参数** - 覆盖已存在文件，简化重新下载流程
-- **🧹 移除历史记录功能** - 删除 558 行代码，简化逻辑，提升性能
-- **⚡ 增强文件校验效率** - 优化存在性检查，提升批量下载速度
+**文件结构示例：**
+```
+/Tate McRae/
+└── Tate McRae - Singles/
+    ├── 01. Hard to Find.m4a          ← 内嵌 Hard to Find 的封面
+    ├── 02. Hung up on You.m4a        ← 内嵌 Hung up on You 的封面
+    └── 03. One Day.m4a               ← 内嵌 One Day 的封面
+```
 
-### 🔬 音质参数验证
-- **✅ 100% 验证通过率** - 8 个音质参数组合专业验证
-- **✅ 参数一致性检测** - 命令行参数与下载文件完全一致
-- **📊 40+ 项技术参数验证** - 使用 FFprobe 7.1 + MediaInfo 24.12
-
-### 🧹 配置优化
-- **移除 4 个无效配置项** - skip-existing-validation、clean-choice、max-memory-limit、txtDownloadThreads
-- **净优化 -464 行代码** - 代码更精简高效
+### 🔧 实现细节
+- 通过 Apple Music API 的 `IsSingle` 字段或专辑名称包含 "Single" 来识别单曲
+- 每个艺术家维护独立的曲目编号序列
+- 支持常见合作标识符的主要艺术家提取：`&`、`ft.`、`feat.`、`featuring`
+- 文件名和元数据标签中的曲目编号保持一致
 
 [查看完整更新日志](#-更新日志)
 
@@ -55,7 +59,7 @@
 
 ## 📖 目录
 
-- [v1.1.0 新特性](#-v110-新特性)
+- [v1.2.0 新特性](#-v120-新特性)
 - [核心特性](#-核心特性)
 - [系统要求](#-系统要求)
 - [快速开始](#-快速开始)
@@ -883,8 +887,8 @@ rm -rf ./Cache
 
 ---
 
-**版本**: v1.1.0  
-**最后更新**: 2025-10-20  
+**版本**: v1.2.0  
+**最后更新**: 2025-10-23  
 **需要 Go 版本**: 1.23.1+
 
 ---

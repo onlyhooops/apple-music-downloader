@@ -6,7 +6,7 @@
 >
 > Supports ALAC, Hi-Res Lossless, Dolby Atmos and other lossless formats, as well as music video downloads.
 
-[![Version](https://img.shields.io/badge/version-v1.1.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
+[![Version](https://img.shields.io/badge/version-v1.2.0-blue.svg)](https://github.com/onlyhooops/apple-music-downloader)
 [![Go Version](https://img.shields.io/badge/Go-1.23.1+-00ADD8.svg)](https://golang.org/)
 [![License](https://img.shields.io/badge/license-Personal%20Use-green.svg)](./LICENSE)
 
@@ -29,25 +29,29 @@
 
 ---
 
-## 🎉 What's New in v1.1.0
+## 🎉 What's New in v1.2.0
 
-### 🔧 Important Fixes
-- **✅ Fixed AAC Binaural/Downmix Download** - Corrected parameter matching bug, now works correctly
-- **✅ Album MV Download Optimization** - Fixed path issues and improved AAC independent path configuration
+### 🎵 Virtual Singles Album
+- **Automatic Single Track Consolidation** - All single releases from an artist are automatically organized into a unified virtual "Singles" album
+- **Smart Track Numbering** - Each single receives an incremental track number (01, 02, 03...) instead of all being "01"
+- **Original Artwork Preservation** - Each single embeds its own original cover art in the m4a file
+- **Collaboration Handling** - Collaborative singles are attributed to the primary artist (e.g., "Tate McRae & Khalid" → Tate McRae's Singles)
+- **Configurable Feature** - Enable/disable via `enable-virtual-singles` in config.yaml
 
-### ⚡ Feature Enhancements
-- **✨ New `--cx` Force Download Parameter** - Overwrite existing files, simplify re-download workflow
-- **🧹 Removed History Feature** - Deleted 558 lines of code, simplified logic, improved performance
-- **⚡ Enhanced File Validation Efficiency** - Optimized existence checks, faster batch downloads
+**Example Structure:**
+```
+/Tate McRae/
+└── Tate McRae - Singles/
+    ├── 01. Hard to Find.m4a          ← Embeds Hard to Find cover
+    ├── 02. Hung up on You.m4a        ← Embeds Hung up on You cover
+    └── 03. One Day.m4a               ← Embeds One Day cover
+```
 
-### 🔬 Audio Quality Validation
-- **✅ 100% Validation Pass Rate** - 8 audio quality parameter combinations professionally verified
-- **✅ Parameter Consistency Check** - Command-line parameters match downloaded files perfectly
-- **📊 40+ Technical Parameters Verified** - Using FFprobe 7.1 + MediaInfo 24.12
-
-### 🧹 Configuration Optimization
-- **Removed 4 Invalid Config Items** - skip-existing-validation, clean-choice, max-memory-limit, txtDownloadThreads
-- **Net Optimization -464 Lines** - Cleaner, more efficient code
+### 🔧 Implementation Details
+- Singles are identified by Apple Music API's `IsSingle` field or album name containing "Single"
+- Each artist maintains an independent track numbering sequence
+- Primary artist extraction supports common separators: `&`, `ft.`, `feat.`, `featuring`
+- Track numbers are synchronized between filenames and metadata tags
 
 [View Complete Changelog](#-changelog)
 
@@ -55,7 +59,7 @@
 
 ## 📖 Table of Contents
 
-- [What's New in v1.1.0](#-whats-new-in-v110)
+- [What's New in v1.2.0](#-whats-new-in-v120)
 - [Core Features](#-core-features)
 - [System Requirements](#-system-requirements)
 - [Quick Start](#-quick-start)
@@ -782,8 +786,8 @@ View [CHANGELOG.md](./CHANGELOG.md) for complete version history.
 
 ---
 
-**Version**: v1.1.0  
-**Last Updated**: 2025-10-20  
+**Version**: v1.2.0  
+**Last Updated**: 2025-10-23  
 **Required Go Version**: 1.23.1+
 
 ---
