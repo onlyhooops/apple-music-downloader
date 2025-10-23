@@ -707,6 +707,61 @@ All rights to downloaded content belong to their respective owners.
 
 ## 📈 Changelog
 
+### v1.2.0 (2025-10-23)
+
+#### 🎵 Virtual Singles Album Feature
+- **Automatic Single Track Consolidation**
+  - All single releases from an artist are automatically organized into a unified virtual "Singles" album
+  - Significantly improves music library organization for artists with many single releases
+  - Configurable via `enable-virtual-singles` option in config.yaml
+
+- **Smart Track Numbering System**
+  - Each single receives an incremental track number (01, 02, 03...) instead of all being "01"
+  - Track numbers are synchronized between filenames and metadata tags
+  - Each artist maintains an independent track numbering sequence
+  - Prevents track number conflicts in music server software
+
+- **Original Artwork Preservation**
+  - Each single's m4a file embeds its own original cover art
+  - Cover images are downloaded as temporary files and embedded during processing
+  - Temporary cover files are automatically cleaned up after embedding
+  - No redundant .jpg files left on disk
+
+- **Collaboration Handling**
+  - Collaborative singles are attributed to the primary artist
+  - Supports common separators: `&`, `ft.`, `feat.`, `featuring`
+  - Example: "Tate McRae & Khalid" → attributed to "Tate McRae - Singles"
+  - Ensures consistent organization across collaboration tracks
+
+#### 🔧 Technical Implementation
+- **Single Identification Logic**
+  - Uses Apple Music API's `IsSingle` field as primary indicator
+  - Falls back to album name pattern matching: "- Single", " Single", "单曲"
+  - Skips playlist items to avoid false positives
+  
+- **Track Number Management**
+  - Global map (`trackEffectiveNumbers`) ensures filename/metadata consistency
+  - Prevents duplicate calls to `GetVirtualSinglesTrackNumber`
+  - Thread-safe implementation with mutex locks
+  
+- **File Structure**
+  ```
+  /Artist Name/
+  └── Artist Name - Singles/
+      ├── 01. First Single.m4a      ← Embeds first single's cover
+      ├── 02. Second Single.m4a     ← Embeds second single's cover
+      └── 03. Third Single.m4a      ← Embeds third single's cover
+  ```
+
+#### 📊 Code Changes
+- Modified files: 5 core files (downloader, metadata writer, state manager)
+- New helper functions: `SetTrackEffectiveNumber`, `GetTrackEffectiveNumber`
+- Enhanced `GetPrimaryArtist` for collaboration handling
+- Lines added: ~120 lines
+- Zero breaking changes to existing functionality
+
+---
+
 ### v1.1.0 (2025-10-20)
 
 #### 🔧 Important Fixes
