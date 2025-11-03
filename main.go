@@ -28,7 +28,7 @@ import (
 
 // 版本信息（编译时通过 ldflags 注入）
 var (
-	Version   = "v1.2.0"  // 版本号
+	Version   = "v1.3.0"  // 版本号
 	BuildTime = "unknown" // 编译时间
 	GitCommit = "unknown" // Git提交哈希
 )
@@ -342,6 +342,11 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 	if len(finalUrls) == 0 {
 		logger.Warn("队列中没有有效的链接可供下载。")
 		return
+	}
+
+	// 如果最终链接数量>1，也应该视为批量模式（支持工作-休息循环）
+	if len(finalUrls) > 1 {
+		isBatch = true
 	}
 
 	totalTasks := len(finalUrls)

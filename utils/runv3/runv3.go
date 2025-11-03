@@ -166,13 +166,13 @@ func GetWebplayback(adamId string, authtoken string, mutoken string, mvmode bool
 		if mvmode {
 			return obj.List[0].HlsPlaylistUrl, "", nil
 		}
-		
+
 		// 调试：打印所有可用的assets
 		logger.Debug("🔍 webPlayback返回的Assets:")
 		for i, asset := range obj.List[0].Assets {
 			logger.Debug("  [%d] Flavor=%s, URL=%s", i, asset.Flavor, asset.URL[:min(80, len(asset.URL))]+"...")
 		}
-		
+
 		// 遍历 Assets，查找匹配的flavor
 		for i := range obj.List[0].Assets {
 			if obj.List[0].Assets[i].Flavor == "28:ctrp256" {
@@ -285,6 +285,9 @@ func extsong(b string) bytes.Buffer {
 	return buffer
 }
 func Run(adamId string, trackpath string, authtoken string, mutoken string, mvmode bool) (string, error) {
+	// 每个新任务开始时重置错误追踪器，避免历史错误累积
+	globalErrorTracker.reset()
+
 	var keystr string //for mv key
 	var fileurl string
 	var kidBase64 string
@@ -373,6 +376,48 @@ type Segment struct {
 	Data  []byte
 }
 
+// segmentErrorTracker 用于聚合和限流分段错误日志
+type segmentErrorTracker struct {
+	mu          sync.Mutex
+	errorCounts map[string]int       // 错误类型 -> 出现次数
+	lastLogTime map[string]time.Time // 错误类型 -> 上次日志时间
+	logInterval time.Duration        // 最小日志间隔
+}
+
+var globalErrorTracker = &segmentErrorTracker{
+	errorCounts: make(map[string]int),
+	lastLogTime: make(map[string]time.Time),
+	logInterval: 3 * time.Second, // 同类错误至少间隔3秒才打印
+}
+
+// shouldLog 判断是否应该打印此错误日志（限流+去重）
+func (t *segmentErrorTracker) shouldLog(errorType string) (shouldLog bool, count int) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.errorCounts[errorType]++
+	count = t.errorCounts[errorType]
+
+	lastTime, exists := t.lastLogTime[errorType]
+	now := time.Now()
+
+	// 第一次出现或距离上次日志超过间隔时间
+	if !exists || now.Sub(lastTime) >= t.logInterval {
+		t.lastLogTime[errorType] = now
+		return true, count
+	}
+
+	return false, count
+}
+
+// reset 重置错误追踪器（每个新的下载任务开始时调用）
+func (t *segmentErrorTracker) reset() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.errorCounts = make(map[string]int)
+	t.lastLogTime = make(map[string]time.Time)
+}
+
 func downloadSegment(url string, index int, wg *sync.WaitGroup, segmentsChan chan<- Segment, client *http.Client, limiter chan struct{}) {
 	// 函数退出时，从 limiter 中接收一个值，释放一个并发槽位
 	defer func() {
@@ -382,25 +427,51 @@ func downloadSegment(url string, index int, wg *sync.WaitGroup, segmentsChan cha
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		logger.Error("错误(分段 %d): 创建请求失败: %v", index, err)
+		// 限流日志：只打印有代表性的错误
+		if shouldLog, count := globalErrorTracker.shouldLog("create_request"); shouldLog {
+			if count > 1 {
+				logger.Error("分段请求创建失败 (已发生%d次，示例分段 %d): %v", count, index, err)
+			} else {
+				logger.Error("错误(分段 %d): 创建请求失败: %v", index, err)
+			}
+		}
 		return
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.Error("错误(分段 %d): 下载失败: %v", index, err)
+		if shouldLog, count := globalErrorTracker.shouldLog("download_failed"); shouldLog {
+			if count > 1 {
+				logger.Error("分段下载失败 (已发生%d次，示例分段 %d): %v", count, index, err)
+			} else {
+				logger.Error("错误(分段 %d): 下载失败: %v", index, err)
+			}
+		}
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("错误(分段 %d): 服务器返回状态码 %d", index, resp.StatusCode)
+		errorType := fmt.Sprintf("status_%d", resp.StatusCode)
+		if shouldLog, count := globalErrorTracker.shouldLog(errorType); shouldLog {
+			if count > 1 {
+				logger.Error("服务器返回状态码 %d (已发生%d次，最新分段 %d)", resp.StatusCode, count, index)
+			} else {
+				logger.Error("错误(分段 %d): 服务器返回状态码 %d", index, resp.StatusCode)
+			}
+		}
 		return
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("错误(分段 %d): 读取数据失败: %v", index, err)
+		if shouldLog, count := globalErrorTracker.shouldLog("read_failed"); shouldLog {
+			if count > 1 {
+				logger.Error("分段数据读取失败 (已发生%d次，示例分段 %d): %v", count, index, err)
+			} else {
+				logger.Error("错误(分段 %d): 读取数据失败: %v", index, err)
+			}
+		}
 		return
 	}
 
@@ -415,7 +486,8 @@ func fileWriter(wg *sync.WaitGroup, segmentsChan <-chan Segment, outputFile io.W
 	// 缓冲区，用于存放乱序到达的分段
 	// key 是分段序号，value 是分段数据
 	segmentBuffer := make(map[int][]byte)
-	nextIndex := 0 // 期望写入的下一个分段的序号
+	nextIndex := 0       // 期望写入的下一个分段的序号
+	writeErrorCount := 0 // 写入错误计数器
 
 	for segment := range segmentsChan {
 		// 检查收到的分段是否是当前期望的
@@ -423,7 +495,11 @@ func fileWriter(wg *sync.WaitGroup, segmentsChan <-chan Segment, outputFile io.W
 			//fmt.Printf("写入分段 %d\n", segment.Index)
 			_, err := outputFile.Write(segment.Data)
 			if err != nil {
-				logger.Error("错误(分段 %d): 写入文件失败: %v", segment.Index, err)
+				writeErrorCount++
+				// 限流：只打印第一次和每10次
+				if writeErrorCount == 1 || writeErrorCount%10 == 0 {
+					logger.Error("分段写入文件失败 (已发生%d次，最新分段 %d): %v", writeErrorCount, segment.Index, err)
+				}
 			}
 			nextIndex++
 
@@ -437,7 +513,10 @@ func fileWriter(wg *sync.WaitGroup, segmentsChan <-chan Segment, outputFile io.W
 				//fmt.Printf("从缓冲区写入分段 %d\n", nextIndex)
 				_, err := outputFile.Write(data)
 				if err != nil {
-					logger.Error("错误(分段 %d): 从缓冲区写入文件失败: %v", nextIndex, err)
+					writeErrorCount++
+					if writeErrorCount == 1 || writeErrorCount%10 == 0 {
+						logger.Error("从缓冲区写入文件失败 (已发生%d次，最新分段 %d): %v", writeErrorCount, nextIndex, err)
+					}
 				}
 				// 从缓冲区删除已写入的分段，释放内存
 				delete(segmentBuffer, nextIndex)
@@ -450,9 +529,14 @@ func fileWriter(wg *sync.WaitGroup, segmentsChan <-chan Segment, outputFile io.W
 		}
 	}
 
-	// 确保所有分段都已写入
+	// 确保所有分段都已写入（只在差异较大时警告）
 	if nextIndex != totalSegments {
-		logger.Warn("警告: 写入完成，但似乎有分段丢失。期望 %d 个, 实际写入 %d 个。", totalSegments, nextIndex)
+		missingCount := totalSegments - nextIndex
+		// 只在丢失超过5%时打印警告
+		if float64(missingCount)/float64(totalSegments) > 0.05 {
+			logger.Warn("警告: 写入完成，但有 %d/%d 个分段丢失 (%.1f%%)",
+				missingCount, totalSegments, float64(missingCount)/float64(totalSegments)*100)
+		}
 	}
 }
 

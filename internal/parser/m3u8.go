@@ -258,7 +258,7 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 		return "", "", "", nil
 	}
 	var qualityForFilename string
-	
+
 	// 调试：打印所有可用的AAC流
 	if core.Dl_aac && (*core.Aac_type == "aac-binaural" || *core.Aac_type == "aac-downmix") {
 		logger.Debug("🔍 查找 %s 流，可用的variants:", *core.Aac_type)
@@ -268,7 +268,7 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 			}
 		}
 	}
-	
+
 	for _, variant := range master.Variants {
 		if core.Dl_atmos {
 			if variant.Codecs == "ec-3" && strings.Contains(variant.Audio, "atmos") {
@@ -287,14 +287,14 @@ func ExtractMedia(b string, more_mode bool) (string, string, string, error) {
 			}
 		} else if core.Dl_aac {
 			if variant.Codecs == "mp4a.40.2" || variant.Codecs == "mp4a.40.5" {
-			// Handle different AAC types including binaural and downmix
-			var matchedType string
+				// Handle different AAC types including binaural and downmix
+				var matchedType string
 
-			// Check for binaural streams (both regular AAC and HE-AAC)
-			if strings.Contains(variant.Audio, "-binaural") && *core.Aac_type == "aac-binaural" {
-				matchedType = "aac-binaural"
-			} else if strings.Contains(variant.Audio, "-downmix") && *core.Aac_type == "aac-downmix" {
-				matchedType = "aac-downmix"
+				// Check for binaural streams (both regular AAC and HE-AAC)
+				if strings.Contains(variant.Audio, "-binaural") && *core.Aac_type == "aac-binaural" {
+					matchedType = "aac-binaural"
+				} else if strings.Contains(variant.Audio, "-downmix") && *core.Aac_type == "aac-downmix" {
+					matchedType = "aac-downmix"
 				} else if *core.Aac_type == "aac-lc" {
 					// For AAC-LC, match regular stereo streams (not binaural/downmix)
 					if !strings.Contains(variant.Audio, "-binaural") && !strings.Contains(variant.Audio, "-downmix") {
@@ -411,6 +411,7 @@ func ExtractVideo(c string) (string, string, error) {
 
 	if streamUrl == nil {
 		if len(video.Variants) > 0 {
+			// 没有找到符合要求的分辨率，使用最高可用分辨率
 			streamUrl, _ = MediaUrl.Parse(video.Variants[0].URI)
 			// Try to extract resolution from first variant
 			matches := re.FindStringSubmatch(video.Variants[0].URI)
@@ -430,6 +431,10 @@ func ExtractVideo(c string) (string, string, error) {
 					qualityLabel = fmt.Sprintf("%dP", height)
 				}
 				resolution = fmt.Sprintf("%dx%d (%s)", width, height, qualityLabel)
+				// 如果使用的分辨率高于配置的上限，说明没有找到符合配置的分辨率
+				if height > maxHeight {
+					logger.Warn("⚠️  未找到 %dp 或更低分辨率，使用最高可用分辨率: %s", maxHeight, resolution)
+				}
 			} else {
 				resolution = "未知"
 			}
