@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"main/internal/config"
 	"main/internal/logger"
 	"main/utils/structs"
 	"os"
@@ -216,10 +217,19 @@ func LoadConfig(configPath string) error {
 			Config.RestDurationMinutes = 1
 			logger.Info("📌 配置文件中未设置 'rest-duration-minutes'，自动设为默认值 1 分钟")
 		}
-		logger.Debug("[工作-休息] 最终配置: 工作=%d分钟, 休息=%d分钟", 
+		logger.Debug("[工作-休息] 最终配置: 工作=%d分钟, 休息=%d分钟",
 			Config.WorkDurationMinutes, Config.RestDurationMinutes)
 	} else {
 		logger.Debug("[工作-休息] 配置未启用 (work-rest-enabled=false)")
+	}
+
+	// 验证配置的完整性和有效性
+	logger.Debug("开始验证配置文件...")
+	validationResult := config.ValidateConfig(&Config)
+	validationResult.Print()
+
+	if !validationResult.IsValid() {
+		return fmt.Errorf("配置文件验证失败，请检查配置")
 	}
 
 	return nil
