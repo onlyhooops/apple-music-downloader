@@ -20,6 +20,7 @@ import (
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/logger"
+	"main/internal/network"
 	"main/internal/parser"
 	"main/internal/progress"
 	"main/internal/ui"
@@ -568,6 +569,9 @@ func main() {
 		fmt.Printf("初始化logger失败: %v\n", err)
 		return
 	}
+
+	// 初始化网络客户端（包括本地 wrapper 优化）
+	network.InitializeClients(&core.Config)
 
 	// 创建可取消的 context 用于优雅退出
 	ctx, cancel := context.WithCancel(context.Background())

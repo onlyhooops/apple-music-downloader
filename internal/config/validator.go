@@ -87,6 +87,9 @@ func ValidateConfig(cfg *structs.ConfigSet) *ValidationResult {
 	// 9. 验证日志配置
 	validateLogging(cfg, result)
 
+	// 10. 验证本地 wrapper 优化配置
+	validateLocalWrapperOptimization(cfg, result)
+
 	return result
 }
 
@@ -412,5 +415,87 @@ func validateLogging(cfg *structs.ConfigSet, result *ValidationResult) {
 				Message: fmt.Sprintf("日志输出配置可能不正确: '%s'", cfg.Logging.Output),
 			})
 		}
+	}
+}
+
+// validateLocalWrapperOptimization 验证本地 wrapper 优化配置
+func validateLocalWrapperOptimization(cfg *structs.ConfigSet, result *ValidationResult) {
+	opt := cfg.LocalWrapperOptimization
+
+	// 如果未启用，跳过其他验证
+	if !opt.Enabled {
+		return
+	}
+
+	// 验证连接数配置
+	if opt.MaxIdleConns > 0 && opt.MaxIdleConns < 10 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.max-idle-conns",
+			Message: fmt.Sprintf("最大空闲连接数过小（%d），建议至少 50", opt.MaxIdleConns),
+		})
+	}
+
+	if opt.MaxIdleConns > 1000 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.max-idle-conns",
+			Message: fmt.Sprintf("最大空闲连接数过大（%d），可能消耗过多资源", opt.MaxIdleConns),
+		})
+	}
+
+	if opt.MaxIdleConnsPerHost > 0 && opt.MaxIdleConnsPerHost < 10 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.max-idle-conns-per-host",
+			Message: fmt.Sprintf("每主机最大空闲连接数过小（%d），建议至少 20", opt.MaxIdleConnsPerHost),
+		})
+	}
+
+	if opt.MaxIdleConnsPerHost > opt.MaxIdleConns && opt.MaxIdleConns > 0 {
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "local-wrapper-optimization.max-idle-conns-per-host",
+			Message: "每主机最大空闲连接数不能大于总最大空闲连接数",
+		})
+	}
+
+	if opt.MaxConnsPerHost > 0 && opt.MaxConnsPerHost < opt.MaxIdleConnsPerHost {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.max-conns-per-host",
+			Message: "每主机最大连接数小于最大空闲连接数，可能导致连接数不足",
+		})
+	}
+
+	// 验证超时配置
+	if opt.IdleConnTimeoutSec > 0 && opt.IdleConnTimeoutSec < 30 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.idle-conn-timeout-sec",
+			Message: fmt.Sprintf("空闲连接超时过短（%ds），本地服务建议 60-600 秒", opt.IdleConnTimeoutSec),
+		})
+	}
+
+	if opt.IdleConnTimeoutSec > 3600 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.idle-conn-timeout-sec",
+			Message: fmt.Sprintf("空闲连接超时过长（%ds），可能导致资源长时间占用", opt.IdleConnTimeoutSec),
+		})
+	}
+
+	if opt.DialTimeoutMs > 0 && opt.DialTimeoutMs < 50 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.dial-timeout-ms",
+			Message: fmt.Sprintf("连接超时过短（%dms），可能导致连接失败", opt.DialTimeoutMs),
+		})
+	}
+
+	if opt.DialTimeoutMs > 5000 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.dial-timeout-ms",
+			Message: fmt.Sprintf("连接超时过长（%dms），本地服务建议 50-1000 毫秒", opt.DialTimeoutMs),
+		})
+	}
+
+	if opt.ExpectContinueTimeMs > 0 && opt.ExpectContinueTimeMs > 2000 {
+		result.Warnings = append(result.Warnings, ValidationError{
+			Field:   "local-wrapper-optimization.expect-continue-time-ms",
+			Message: fmt.Sprintf("Expect-Continue 超时过长（%dms），本地服务建议 100-500 毫秒", opt.ExpectContinueTimeMs),
+		})
 	}
 }

@@ -14,60 +14,74 @@ type Account struct {
 }
 
 type ConfigSet struct {
-	Accounts                 []Account     `yaml:"accounts"`
-	Language                 string        `yaml:"language"`
-	SaveLrcFile              bool          `yaml:"save-lrc-file"`
-	LrcType                  string        `yaml:"lrc-type"`
-	LrcFormat                string        `yaml:"lrc-format"`
-	SaveAnimatedArtwork      bool          `yaml:"save-animated-artwork"`
-	EmbyAnimatedArtwork      bool          `yaml:"emby-animated-artwork"`
-	EmbedLrc                 bool          `yaml:"embed-lrc"`
-	EmbedCover               bool          `yaml:"embed-cover"`
-	SaveArtistCover          bool          `yaml:"save-artist-cover"`
-	CoverSize                string        `yaml:"cover-size"`
-	CoverFormat              string        `yaml:"cover-format"`
-	AlacSaveFolder           string        `yaml:"alac-save-folder"`
-	AtmosSaveFolder          string        `yaml:"atmos-save-folder"`
-	AacSaveFolder            string        `yaml:"aac-save-folder"`
-	MVSaveFolder             string        `yaml:"mv-save-folder"`
-	AlbumFolderFormat        string        `yaml:"album-folder-format"`
-	PlaylistFolderFormat     string        `yaml:"playlist-folder-format"`
-	ArtistFolderFormat       string        `yaml:"artist-folder-format"`
-	SongFileFormat           string        `yaml:"song-file-format"`
-	ExplicitChoice           string        `yaml:"explicit-choice"`
-	AppleMasterChoice        string        `yaml:"apple-master-choice"`
-	GetM3u8Mode              string        `yaml:"get-m3u8-mode"`
-	GetM3u8FromDevice        bool          `yaml:"get-m3u8-from-device"`
-	AacType                  string        `yaml:"aac-type"`
-	AlacMax                  int           `yaml:"alac-max"`
-	AtmosMax                 int           `yaml:"atmos-max"`
-	LimitMax                 int           `yaml:"limit-max"`
-	UseSongInfoForPlaylist   bool          `yaml:"use-songinfo-for-playlist"`
-	DlAlbumcoverForPlaylist  bool          `yaml:"dl-albumcover-for-playlist"`
-	MVAudioType              string        `yaml:"mv-audio-type"`
-	MVMax                    int           `yaml:"mv-max"`
-	MVMin                    int           `yaml:"mv-min"`
-	AacDownloadThreads       int           `yaml:"aac_downloadthreads"`
-	LosslessDownloadThreads  int           `yaml:"lossless_downloadthreads"`
-	HiresDownloadThreads     int           `yaml:"hires_downloadthreads"`
-	ChunkDownloadThreads     int           `yaml:"chunk_downloadthreads"`
-	BufferSizeKB             int           `yaml:"BufferSizeKB"`
-	NetworkReadBufferKB      int           `yaml:"NetworkReadBufferKB"`
-	MaxPathLength            int           `yaml:"max-path-length"`
-	DefaultLyricStorefront   string        `yaml:"default-lyric-storefront"`
-	DownloadVideos           bool          `yaml:"download-videos"`
-	FfmpegFix                bool          `yaml:"ffmpeg-fix"`
-	FfmpegCheckArgs          string        `yaml:"ffmpeg-check-args"`
-	FfmpegEncodeArgs         string        `yaml:"ffmpeg-encode-args"`
-	EnableCache              bool          `yaml:"enable-cache"`
-	CacheFolder              string        `yaml:"cache-folder"`
-	BatchSize                int           `yaml:"batch-size"`                  // 分批处理的批次大小，0表示不分批
-	WorkRestEnabled          bool          `yaml:"work-rest-enabled"`           // 启用工作-休息循环
-	WorkDurationMinutes      int           `yaml:"work-duration-minutes"`       // 工作时长（分钟）
-	RestDurationMinutes      int           `yaml:"rest-duration-minutes"`       // 休息时长（分钟）
-	Logging                  LoggingConfig `yaml:"logging"`                     // 日志配置
-	EnableVirtualSingles     bool          `yaml:"enable-virtual-singles"`      // 是否启用虚拟Singles专辑
-	VirtualSinglesFolderName string        `yaml:"virtual-singles-folder-name"` // 虚拟单曲专辑的文件夹名称
+	Accounts                 []Account          `yaml:"accounts"`
+	Language                 string             `yaml:"language"`
+	SaveLrcFile              bool               `yaml:"save-lrc-file"`
+	LrcType                  string             `yaml:"lrc-type"`
+	LrcFormat                string             `yaml:"lrc-format"`
+	SaveAnimatedArtwork      bool               `yaml:"save-animated-artwork"`
+	EmbyAnimatedArtwork      bool               `yaml:"emby-animated-artwork"`
+	EmbedLrc                 bool               `yaml:"embed-lrc"`
+	EmbedCover               bool               `yaml:"embed-cover"`
+	SaveArtistCover          bool               `yaml:"save-artist-cover"`
+	CoverSize                string             `yaml:"cover-size"`
+	CoverFormat              string             `yaml:"cover-format"`
+	AlacSaveFolder           string             `yaml:"alac-save-folder"`
+	AtmosSaveFolder          string             `yaml:"atmos-save-folder"`
+	AacSaveFolder            string             `yaml:"aac-save-folder"`
+	MVSaveFolder             string             `yaml:"mv-save-folder"`
+	AlbumFolderFormat        string             `yaml:"album-folder-format"`
+	PlaylistFolderFormat     string             `yaml:"playlist-folder-format"`
+	ArtistFolderFormat       string             `yaml:"artist-folder-format"`
+	SongFileFormat           string             `yaml:"song-file-format"`
+	ExplicitChoice           string             `yaml:"explicit-choice"`
+	AppleMasterChoice        string             `yaml:"apple-master-choice"`
+	GetM3u8Mode              string             `yaml:"get-m3u8-mode"`
+	GetM3u8FromDevice        bool               `yaml:"get-m3u8-from-device"`
+	AacType                  string             `yaml:"aac-type"`
+	AlacMax                  int                `yaml:"alac-max"`
+	AtmosMax                 int                `yaml:"atmos-max"`
+	LimitMax                 int                `yaml:"limit-max"`
+	UseSongInfoForPlaylist   bool               `yaml:"use-songinfo-for-playlist"`
+	DlAlbumcoverForPlaylist  bool               `yaml:"dl-albumcover-for-playlist"`
+	MVAudioType              string             `yaml:"mv-audio-type"`
+	MVMax                    int                `yaml:"mv-max"`
+	MVMin                    int                `yaml:"mv-min"`
+	AacDownloadThreads       int                `yaml:"aac_downloadthreads"`
+	LosslessDownloadThreads  int                `yaml:"lossless_downloadthreads"`
+	HiresDownloadThreads     int                `yaml:"hires_downloadthreads"`
+	ChunkDownloadThreads     int                `yaml:"chunk_downloadthreads"`
+	BufferSizeKB             int                `yaml:"BufferSizeKB"`
+	NetworkReadBufferKB      int                `yaml:"NetworkReadBufferKB"`
+	MaxPathLength            int                `yaml:"max-path-length"`
+	DefaultLyricStorefront   string             `yaml:"default-lyric-storefront"`
+	DownloadVideos           bool               `yaml:"download-videos"`
+	FfmpegFix                bool               `yaml:"ffmpeg-fix"`
+	FfmpegCheckArgs          string             `yaml:"ffmpeg-check-args"`
+	FfmpegEncodeArgs         string             `yaml:"ffmpeg-encode-args"`
+	EnableCache              bool               `yaml:"enable-cache"`
+	CacheFolder              string             `yaml:"cache-folder"`
+	BatchSize                int                `yaml:"batch-size"`                  // 分批处理的批次大小，0表示不分批
+	WorkRestEnabled          bool               `yaml:"work-rest-enabled"`           // 启用工作-休息循环
+	WorkDurationMinutes      int                `yaml:"work-duration-minutes"`       // 工作时长（分钟）
+	RestDurationMinutes      int                `yaml:"rest-duration-minutes"`       // 休息时长（分钟）
+	Logging                  LoggingConfig      `yaml:"logging"`                     // 日志配置
+	EnableVirtualSingles     bool               `yaml:"enable-virtual-singles"`      // 是否启用虚拟Singles专辑
+	VirtualSinglesFolderName string             `yaml:"virtual-singles-folder-name"` // 虚拟单曲专辑的文件夹名称
+	LocalWrapperOptimization LocalWrapperConfig `yaml:"local-wrapper-optimization"`  // 本地 wrapper 服务优化配置
+}
+
+// LocalWrapperConfig 本地 wrapper 服务优化配置
+type LocalWrapperConfig struct {
+	Enabled              bool `yaml:"enabled"`                 // 是否启用本地优化模式
+	MaxIdleConns         int  `yaml:"max-idle-conns"`          // 最大空闲连接数
+	MaxIdleConnsPerHost  int  `yaml:"max-idle-conns-per-host"` // 每个主机的最大空闲连接数
+	MaxConnsPerHost      int  `yaml:"max-conns-per-host"`      // 每个主机的最大连接数
+	IdleConnTimeoutSec   int  `yaml:"idle-conn-timeout-sec"`   // 空闲连接超时（秒）
+	DialTimeoutMs        int  `yaml:"dial-timeout-ms"`         // 连接超时（毫秒）
+	KeepAlive            bool `yaml:"keep-alive"`              // 是否启用 TCP KeepAlive
+	DisableCompression   bool `yaml:"disable-compression"`     // 是否禁用压缩（本地通讯无需压缩）
+	ExpectContinueTimeMs int  `yaml:"expect-continue-time-ms"` // Expect: 100-continue 超时（毫秒）
 }
 
 // LoggingConfig 日志配置
