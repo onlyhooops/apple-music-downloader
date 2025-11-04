@@ -178,7 +178,11 @@ func LoadConfig(configPath string) error {
 	if *Mv_max == 1080 {
 		Mv_max = &Config.MVMax
 		if Config.MVMax > 0 && Config.MVMax != 1080 {
-			logger.Info("📌 使用配置文件中的 MV 分辨率上限: %dp", Config.MVMax)
+			if Config.MVMin > 0 && Config.MVMin != Config.MVMax {
+				logger.Info("📌 使用配置文件中的 MV 分辨率范围: %dp ~ %dp", Config.MVMin, Config.MVMax)
+			} else {
+				logger.Info("📌 使用配置文件中的 MV 分辨率上限: %dp", Config.MVMax)
+			}
 		}
 	} else {
 		logger.Info("📌 使用命令行指定的 MV 分辨率上限: %dp", *Mv_max)

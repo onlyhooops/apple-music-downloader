@@ -323,9 +323,34 @@ func validateMVConfig(cfg *structs.ConfigSet, result *ValidationResult) {
 		if !valid {
 			result.Warnings = append(result.Warnings, ValidationError{
 				Field:   "mv-max",
-				Message: fmt.Sprintf("分辨率 %d 不在标准值中（有效值: %v）", cfg.MVMax, constants.ValidMVResolutions),
+				Message: fmt.Sprintf("MV 分辨率上限 %d 不在标准值中（有效值: %v）", cfg.MVMax, constants.ValidMVResolutions),
 			})
 		}
+	}
+	
+	// 验证 MV 最小分辨率
+	if cfg.MVMin != 0 {
+		valid := false
+		for _, res := range constants.ValidMVResolutions {
+			if cfg.MVMin == res {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			result.Warnings = append(result.Warnings, ValidationError{
+				Field:   "mv-min",
+				Message: fmt.Sprintf("MV 分辨率下限 %d 不在标准值中（有效值: %v）", cfg.MVMin, constants.ValidMVResolutions),
+			})
+		}
+	}
+	
+	// 验证上限和下限的逻辑关系
+	if cfg.MVMax > 0 && cfg.MVMin > 0 && cfg.MVMin > cfg.MVMax {
+		result.Errors = append(result.Errors, ValidationError{
+			Field:   "mv-min/mv-max",
+			Message: fmt.Sprintf("MV 分辨率下限 (%d) 不能大于上限 (%d)", cfg.MVMin, cfg.MVMax),
+		})
 	}
 }
 

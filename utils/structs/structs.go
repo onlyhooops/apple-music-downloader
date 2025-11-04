@@ -46,6 +46,7 @@ type ConfigSet struct {
 	DlAlbumcoverForPlaylist  bool          `yaml:"dl-albumcover-for-playlist"`
 	MVAudioType              string        `yaml:"mv-audio-type"`
 	MVMax                    int           `yaml:"mv-max"`
+	MVMin                    int           `yaml:"mv-min"`
 	AacDownloadThreads       int           `yaml:"aac_downloadthreads"`
 	LosslessDownloadThreads  int           `yaml:"lossless_downloadthreads"`
 	HiresDownloadThreads     int           `yaml:"hires_downloadthreads"`
