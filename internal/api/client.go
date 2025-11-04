@@ -3,7 +3,6 @@ package api
 import (
 	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"main/internal/core"
@@ -411,10 +410,30 @@ func GetToken() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	regex := regexp.MustCompile(`/assets/index-legacy-[^/]+\.js`)
-	indexJsUri := regex.FindString(string(body))
+	// 尝试多种可能的 JS 文件命名模式
+	patterns := []string{
+		`/assets/index~[^"]+\.js`,        // 新版本格式
+		`/assets/index-legacy-[^/]+\.js`, // 旧版本格式（向后兼容）
+		`/assets/index[^"]*\.js`,         // 通用格式
+	}
+
+	var indexJsUri string
+	for _, pattern := range patterns {
+		regex := regexp.MustCompile(pattern)
+		indexJsUri = regex.FindString(string(body))
+		if indexJsUri != "" {
+			logger.Debug("[Token] 找到 JS 文件: %s", indexJsUri)
+			break
+		}
+	}
+
 	if indexJsUri == "" {
-		return "", errors.New("could not find JS asset URL in HTML")
+		preview := string(body)
+		if len(preview) > 200 {
+			preview = preview[:200]
+		}
+		logger.Debug("[Token] 网页内容预览: %s...", preview)
+		return "", fmt.Errorf("无法在 HTML 中找到 JS 资源文件（尝试了 %d 种模式）", len(patterns))
 	}
 	req, err = http.NewRequest("GET", "https://beta.music.apple.com"+indexJsUri, nil)
 	if err != nil {
@@ -427,12 +446,18 @@ func GetToken() (string, error) {
 	defer resp.Body.Close()
 	body, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("读取 JS 文件失败: %w", err)
 	}
-	regex = regexp.MustCompile(`eyJh([^"]*)`)
+
+	// JWT token 通常以 eyJ 开头（Base64 编码的 {"alg"...）
+	regex := regexp.MustCompile(`eyJh[A-Za-z0-9\-_\.]+`)
 	token := regex.FindString(string(body))
 	if token == "" {
-		return "", errors.New("could not find developer token in JS file")
+		logger.Debug("[Token] 无法在 JS 文件中找到 token")
+		logger.Debug("[Token] JS 文件大小: %d bytes", len(body))
+		return "", fmt.Errorf("无法在 JS 文件中找到开发者 token")
 	}
+
+	logger.Debug("[Token] 成功获取到 token (长度: %d)", len(token))
 	return token, nil
 }
