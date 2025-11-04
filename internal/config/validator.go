@@ -40,14 +40,14 @@ func (r *ValidationResult) Print() {
 			logger.Error("  - %s: %s", err.Field, err.Message)
 		}
 	}
-	
+
 	if len(r.Warnings) > 0 {
 		logger.Warn("⚠️  配置文件有 %d 个警告:", len(r.Warnings))
 		for _, warn := range r.Warnings {
 			logger.Warn("  - %s: %s", warn.Field, warn.Message)
 		}
 	}
-	
+
 	if r.IsValid() && !r.HasWarnings() {
 		logger.Info("✅ 配置文件验证通过")
 	}
@@ -59,34 +59,34 @@ func ValidateConfig(cfg *structs.ConfigSet) *ValidationResult {
 		Errors:   []ValidationError{},
 		Warnings: []ValidationError{},
 	}
-	
+
 	// 1. 验证账号配置
 	validateAccounts(cfg, result)
-	
+
 	// 2. 验证保存路径
 	validateSavePaths(cfg, result)
-	
+
 	// 3. 验证缓存配置
 	validateCache(cfg, result)
-	
+
 	// 4. 验证下载性能配置
 	validateDownloadPerformance(cfg, result)
-	
+
 	// 5. 验证工作-休息循环配置
 	validateWorkRest(cfg, result)
-	
+
 	// 6. 验证音质配置
 	validateAudioQuality(cfg, result)
-	
+
 	// 7. 验证 MV 配置
 	validateMVConfig(cfg, result)
-	
+
 	// 8. 验证路径限制
 	validatePathLimits(cfg, result)
-	
+
 	// 9. 验证日志配置
 	validateLogging(cfg, result)
-	
+
 	return result
 }
 
@@ -99,11 +99,11 @@ func validateAccounts(cfg *structs.ConfigSet, result *ValidationResult) {
 		})
 		return
 	}
-	
+
 	storefronts := make(map[string]int)
 	for i, account := range cfg.Accounts {
 		fieldPrefix := fmt.Sprintf("accounts[%d]", i)
-		
+
 		// 验证 storefront
 		if account.Storefront == "" {
 			result.Errors = append(result.Errors, ValidationError{
@@ -113,7 +113,7 @@ func validateAccounts(cfg *structs.ConfigSet, result *ValidationResult) {
 		} else {
 			storefronts[account.Storefront]++
 		}
-		
+
 		// 验证 media_user_token
 		if account.MediaUserToken == "" {
 			result.Warnings = append(result.Warnings, ValidationError{
@@ -127,7 +127,7 @@ func validateAccounts(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 检查重复的 storefront
 	for sf, count := range storefronts {
 		if count > 1 {
@@ -146,7 +146,7 @@ func validateSavePaths(cfg *structs.ConfigSet, result *ValidationResult) {
 		"atmos_save_folder": cfg.AtmosSaveFolder,
 		"aac_save_folder":   cfg.AacSaveFolder,
 	}
-	
+
 	for field, path := range paths {
 		if path == "" {
 			result.Errors = append(result.Errors, ValidationError{
@@ -155,7 +155,7 @@ func validateSavePaths(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 			continue
 		}
-		
+
 		// 检查路径是否可访问（尝试创建目录）
 		absPath, err := filepath.Abs(path)
 		if err != nil {
@@ -165,7 +165,7 @@ func validateSavePaths(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 			continue
 		}
-		
+
 		// 检查父目录是否存在或可创建
 		if err := os.MkdirAll(absPath, 0755); err != nil {
 			result.Warnings = append(result.Warnings, ValidationError{
@@ -184,7 +184,7 @@ func validateCache(cfg *structs.ConfigSet, result *ValidationResult) {
 			Message: "缓存目录未设置（将使用默认值）",
 		})
 	}
-	
+
 	if cfg.BatchSize < 0 {
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "batch-size",
@@ -201,7 +201,7 @@ func validateDownloadPerformance(cfg *structs.ConfigSet, result *ValidationResul
 		"aac_downloadthreads":      cfg.AacDownloadThreads,
 		"hires_downloadthreads":    cfg.HiresDownloadThreads,
 	}
-	
+
 	for field, value := range threads {
 		if value <= 0 {
 			result.Errors = append(result.Errors, ValidationError{
@@ -215,7 +215,7 @@ func validateDownloadPerformance(cfg *structs.ConfigSet, result *ValidationResul
 			})
 		}
 	}
-	
+
 	// 验证缓冲区大小
 	if cfg.BufferSizeKB <= 0 {
 		result.Warnings = append(result.Warnings, ValidationError{
@@ -223,7 +223,7 @@ func validateDownloadPerformance(cfg *structs.ConfigSet, result *ValidationResul
 			Message: "缓冲区大小未设置或无效",
 		})
 	}
-	
+
 	if cfg.NetworkReadBufferKB <= 0 {
 		result.Warnings = append(result.Warnings, ValidationError{
 			Field:   "NetworkReadBufferKB",
@@ -237,21 +237,21 @@ func validateWorkRest(cfg *structs.ConfigSet, result *ValidationResult) {
 	if !cfg.WorkRestEnabled {
 		return
 	}
-	
+
 	if cfg.WorkDurationMinutes < 1 {
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "work-duration-minutes",
 			Message: "工作时长至少为 1 分钟",
 		})
 	}
-	
+
 	if cfg.RestDurationMinutes < 1 {
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "rest-duration-minutes",
 			Message: "休息时长至少为 1 分钟",
 		})
 	}
-	
+
 	if cfg.WorkDurationMinutes > 180 {
 		result.Warnings = append(result.Warnings, ValidationError{
 			Field:   "work-duration-minutes",
@@ -278,7 +278,7 @@ func validateAudioQuality(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 验证封面尺寸格式
 	if cfg.CoverSize != "" {
 		// 简单验证格式是否为 WxH
@@ -310,7 +310,7 @@ func validateMVConfig(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 验证 MV 最大分辨率
 	if cfg.MVMax != 0 {
 		valid := false
@@ -327,7 +327,7 @@ func validateMVConfig(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 验证 MV 最小分辨率
 	if cfg.MVMin != 0 {
 		valid := false
@@ -344,7 +344,7 @@ func validateMVConfig(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 验证上限和下限的逻辑关系
 	if cfg.MVMax > 0 && cfg.MVMin > 0 && cfg.MVMin > cfg.MVMax {
 		result.Errors = append(result.Errors, ValidationError{
@@ -364,7 +364,7 @@ func validatePathLimits(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	if cfg.MaxPathLength > 0 {
 		if cfg.MaxPathLength < 100 {
 			result.Warnings = append(result.Warnings, ValidationError{
@@ -386,7 +386,7 @@ func validateLogging(cfg *structs.ConfigSet, result *ValidationResult) {
 				break
 			}
 		}
-		
+
 		if !levelValid {
 			result.Warnings = append(result.Warnings, ValidationError{
 				Field:   "logging.level",
@@ -394,7 +394,7 @@ func validateLogging(cfg *structs.ConfigSet, result *ValidationResult) {
 			})
 		}
 	}
-	
+
 	// 验证日志输出配置
 	if cfg.Logging.Output != "" {
 		validOutputs := []string{"stdout", "stderr", "file"}
@@ -405,7 +405,7 @@ func validateLogging(cfg *structs.ConfigSet, result *ValidationResult) {
 				break
 			}
 		}
-		
+
 		if !outputValid {
 			result.Warnings = append(result.Warnings, ValidationError{
 				Field:   "logging.output",
@@ -414,4 +414,3 @@ func validateLogging(cfg *structs.ConfigSet, result *ValidationResult) {
 		}
 	}
 }
-
