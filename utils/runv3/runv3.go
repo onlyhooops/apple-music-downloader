@@ -167,23 +167,45 @@ func GetWebplayback(adamId string, authtoken string, mutoken string, mvmode bool
 			return obj.List[0].HlsPlaylistUrl, "", nil
 		}
 
-		// 调试：打印所有可用的assets
-		logger.Debug("🔍 webPlayback返回的Assets:")
-		for i, asset := range obj.List[0].Assets {
-			logger.Debug("  [%d] Flavor=%s, URL=%s", i, asset.Flavor, asset.URL[:min(80, len(asset.URL))]+"...")
-		}
+	// 调试：打印所有可用的assets
+	logger.Debug("🔍 webPlayback返回的Assets:")
+	for i, asset := range obj.List[0].Assets {
+		logger.Debug("  [%d] Flavor=%s, URL=%s", i, asset.Flavor, asset.URL[:min(80, len(asset.URL))]+"...")
+	}
 
-		// 遍历 Assets，查找匹配的flavor
+	// 遍历 Assets，查找匹配的flavor（优先级顺序）
+	// 优先顺序: ctrp256 > cbcp256 > ibhp256 > 其他256格式
+	preferredFlavors := []string{
+		"28:ctrp256", "ctrp256", // 原有格式（向后兼容）
+		"30:cbcp256", "cbcp256", // 新格式1
+		"37:ibhp256", "ibhp256", // 新格式2
+	}
+	
+	for _, preferredFlavor := range preferredFlavors {
 		for i := range obj.List[0].Assets {
-			if obj.List[0].Assets[i].Flavor == "28:ctrp256" {
+			if obj.List[0].Assets[i].Flavor == preferredFlavor {
+				logger.Debug("🎵 选择 AAC 格式: %s", preferredFlavor)
 				kidBase64, fileurl, err := extractKidBase64(obj.List[0].Assets[i].URL, false)
 				if err != nil {
 					return "", "", err
 				}
 				return fileurl, kidBase64, nil
 			}
-			continue
 		}
+	}
+	
+	// 如果首选格式都没找到，尝试任何包含 "256" 的格式
+	logger.Debug("⚠️ 未找到首选 AAC 格式，尝试查找其他 256kbps 格式")
+	for i := range obj.List[0].Assets {
+		if strings.Contains(obj.List[0].Assets[i].Flavor, "256") {
+			logger.Debug("🎵 使用备选 AAC 格式: %s", obj.List[0].Assets[i].Flavor)
+			kidBase64, fileurl, err := extractKidBase64(obj.List[0].Assets[i].URL, false)
+			if err != nil {
+				return "", "", err
+			}
+			return fileurl, kidBase64, nil
+		}
+	}
 	}
 	return "", "", errors.New("Unavailable")
 }

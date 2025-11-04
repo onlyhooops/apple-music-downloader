@@ -406,14 +406,14 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 	var workStartTime time.Time
 	if isBatch && core.Config.WorkRestEnabled {
 		workStartTime = time.Now()
-		logger.Debug("[工作-休息] 循环已启用: 工作=%d分钟, 休息=%d分钟, 任务数=%d", 
+		logger.Debug("[工作-休息] 循环已启用: 工作=%d分钟, 休息=%d分钟, 任务数=%d",
 			core.Config.WorkDurationMinutes, core.Config.RestDurationMinutes, len(finalUrls))
 		core.SafePrintf("⏰ 工作-休息循环: 工作 %d 分钟 / 休息 %d 分钟\n",
 			core.Config.WorkDurationMinutes,
 			core.Config.RestDurationMinutes)
 		core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
 	} else if isBatch {
-		logger.Debug("[工作-休息] 循环未启用: WorkRestEnabled=%v, 任务数=%d", 
+		logger.Debug("[工作-休息] 循环未启用: WorkRestEnabled=%v, 任务数=%d",
 			core.Config.WorkRestEnabled, len(finalUrls))
 	}
 
@@ -425,7 +425,7 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 			return
 		default:
 		}
-		
+
 		// 计算实际的任务编号（考虑 --start 参数）
 		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
@@ -441,8 +441,8 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 		if isBatch && core.Config.WorkRestEnabled && i < len(finalUrls)-1 {
 			elapsed := time.Since(workStartTime)
 			workDuration := time.Duration(core.Config.WorkDurationMinutes) * time.Minute
-			
-			logger.Debug("[工作-休息] 检查点: 已工作 %.1f 分钟 / 阈值 %d 分钟, 任务进度 %d/%d", 
+
+			logger.Debug("[工作-休息] 检查点: 已工作 %.1f 分钟 / 阈值 %d 分钟, 任务进度 %d/%d",
 				elapsed.Minutes(), core.Config.WorkDurationMinutes, i+1, len(finalUrls))
 
 			if elapsed >= workDuration {
@@ -518,7 +518,7 @@ func main() {
 		yellow.Printf("🔖 Git提交: %s\n", GitCommit)
 	}
 	fmt.Println(strings.Repeat("=", constants.BannerSeparatorLength)) // OK: 程序启动横幅
-	fmt.Println()                                                      // OK: 程序启动横幅
+	fmt.Println()                                                     // OK: 程序启动横幅
 
 	core.InitFlags()
 
@@ -576,7 +576,7 @@ func main() {
 	// 创建可取消的 context 用于优雅退出
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	// 设置信号处理，确保程序退出时清理资源
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
@@ -584,13 +584,13 @@ func main() {
 		<-sigChan
 		yellow := color.New(color.FgYellow)
 		yellow.Printf("\n\n⚠️  收到中断信号，正在安全退出...\n")
-		
+
 		// 取消所有进行中的任务
 		cancel()
-		
+
 		// 等待清理完成
 		time.Sleep(constants.CleanupWaitSeconds * time.Second)
-		
+
 		yellow.Printf("✅ 清理完成\n")
 		yellow.Printf("👋 再见！\n")
 		os.Exit(0)
