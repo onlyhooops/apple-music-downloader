@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -194,12 +195,20 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Unlock()
 }
 
-func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int, notifier *progress.ProgressNotifier) (string, string, error) {
+func processURL(ctx context.Context, urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int, notifier *progress.ProgressNotifier) (string, string, error) {
 	if wg != nil {
 		defer wg.Done()
 	}
 	if semaphore != nil {
 		defer func() { <-semaphore }()
+	}
+
+	// 检查 context 是否已取消
+	select {
+	case <-ctx.Done():
+		logger.Info("任务已取消: %s", urlRaw)
+		return "", "", ctx.Err()
+	default:
 	}
 
 	if totalTasks > 1 {
@@ -295,7 +304,7 @@ func parseTxtFile(filePath string) ([]string, error) {
 	return urls, nil
 }
 
-func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
+func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
 	var finalUrls []string
 
 	// 显示输入链接统计
@@ -402,11 +411,19 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 	}
 
 	for i, urlToProcess := range finalUrls {
+		// 检查 context 是否已取消
+		select {
+		case <-ctx.Done():
+			logger.Warn("下载已中断，已完成 %d/%d 个任务", i, len(finalUrls))
+			return
+		default:
+		}
+		
 		// 计算实际的任务编号（考虑 --start 参数）
 		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
 
-		_, _, _ = processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
+		_, _, _ = processURL(ctx, urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
 
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
@@ -542,13 +559,25 @@ func main() {
 		return
 	}
 
+	// 创建可取消的 context 用于优雅退出
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
 	// 设置信号处理，确保程序退出时清理资源
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-sigChan
 		yellow := color.New(color.FgYellow)
-		yellow.Printf("\n\n⚠️  收到终止信号，正在清理资源...\n")
+		yellow.Printf("\n\n⚠️  收到中断信号，正在安全退出...\n")
+		
+		// 取消所有进行中的任务
+		cancel()
+		
+		// 等待清理完成
+		time.Sleep(2 * time.Second)
+		
+		yellow.Printf("✅ 清理完成\n")
 		yellow.Printf("👋 再见！\n")
 		os.Exit(0)
 	}()
@@ -595,13 +624,13 @@ func main() {
 					return
 				}
 				logger.Info("📊 从文件 %s 中解析到 %d 个链接\n", input, len(urls))
-				runDownloads(urls, true, input, progressNotifier)
+				runDownloads(ctx, urls, true, input, progressNotifier)
 			} else {
 				logger.Error("错误: 文件不存在 %s", input)
 				return
 			}
 		} else {
-			runDownloads([]string{input}, false, "", progressNotifier)
+			runDownloads(ctx, []string{input}, false, "", progressNotifier)
 		}
 	} else {
 		// 处理命令行参数：支持TXT文件或直接的URL列表
@@ -642,7 +671,7 @@ func main() {
 			if isBatch {
 				logger.Info("")
 			}
-			runDownloads(urls, isBatch, taskFile, progressNotifier)
+			runDownloads(ctx, urls, isBatch, taskFile, progressNotifier)
 		} else {
 			logger.Warn("没有有效的链接可供处理。")
 		}
