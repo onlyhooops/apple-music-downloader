@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"main/internal/api"
+	"main/internal/constants"
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/logger"
@@ -79,8 +80,8 @@ func handleSingleMV(urlRaw string) {
 	core.Counter.Total++
 	core.SharedLock.Unlock()
 
-	if len(accountForMV.MediaUserToken) <= 50 {
-		logger.Error("MV 下载失败: MediaUserToken 无效或过短（长度: %d）", len(accountForMV.MediaUserToken))
+	if len(accountForMV.MediaUserToken) < constants.MinTokenLength {
+		logger.Error("MV 下载失败: MediaUserToken 无效或过短")
 		logger.Info("提示: 请确保在 dev.env 中配置了有效的 APPLE_MUSIC_MEDIA_USER_TOKEN_CN")
 		core.SharedLock.Lock()
 		core.Counter.Error++
@@ -427,7 +428,7 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
-			core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+			core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 		}
 
 		// 工作-休息循环检查（在任务完成后）
@@ -443,16 +444,16 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 				yellow := color.New(color.FgYellow)
 				green := color.New(color.FgGreen)
 
-				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 				cyan.Printf("⏸️  已工作 %d 分钟，进入休息\n", core.Config.WorkDurationMinutes)
 				yellow.Printf("😴 休息 %d 分钟\n", core.Config.RestDurationMinutes)
 				core.SafePrintf("📊 已完成: %d/%d\n", i+1, totalTasks)
 				core.SafePrintf("⏰ 当前时间: %s\n", time.Now().Format("15:04:05"))
 				core.SafePrintf("⏱️  恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
-				core.SafePrintf("%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 
 				// 休息倒计时（每30秒提示一次）
-				restTicker := time.NewTicker(30 * time.Second)
+				restTicker := time.NewTicker(constants.RestTickerInterval)
 				restTimer := time.NewTimer(restDuration)
 				restStartTime := time.Now()
 
@@ -476,10 +477,10 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 
 				// 休息结束，重新开始计时
 				workStartTime = time.Now()
-				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 				green.Printf("✅ 休息完毕，继续任务\n")
 				core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
-				core.SafePrintf("%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 			}
 		}
 	}
@@ -493,7 +494,7 @@ func main() {
 	// 打印版本信息
 	cyan := color.New(color.FgCyan, color.Bold)
 	yellow := color.New(color.FgYellow)
-	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
+	fmt.Println(strings.Repeat("=", constants.BannerSeparatorLength)) // OK: 程序启动横幅
 	cyan.Printf("🎵 Apple Music Downloader %s\n", Version)
 
 	// 显示编译时间（本地时间）
@@ -506,8 +507,8 @@ func main() {
 	if GitCommit != "unknown" {
 		yellow.Printf("🔖 Git提交: %s\n", GitCommit)
 	}
-	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
-	fmt.Println()                        // OK: 程序启动横幅
+	fmt.Println(strings.Repeat("=", constants.BannerSeparatorLength)) // OK: 程序启动横幅
+	fmt.Println()                                                      // OK: 程序启动横幅
 
 	core.InitFlags()
 
@@ -575,7 +576,7 @@ func main() {
 		cancel()
 		
 		// 等待清理完成
-		time.Sleep(2 * time.Second)
+		time.Sleep(constants.CleanupWaitSeconds * time.Second)
 		
 		yellow.Printf("✅ 清理完成\n")
 		yellow.Printf("👋 再见！\n")

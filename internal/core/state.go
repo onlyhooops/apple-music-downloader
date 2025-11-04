@@ -306,7 +306,7 @@ func GetVirtualSinglesTrackNumber(artistName string) int {
 	// 不存在则用写锁初始化
 	virtualSinglesLock.Lock()
 	defer virtualSinglesLock.Unlock()
-	
+
 	// 双重检查（避免竞态条件）
 	if _, exists := virtualSinglesTrackNumbers[artistName]; !exists {
 		virtualSinglesTrackNumbers[artistName] = 1

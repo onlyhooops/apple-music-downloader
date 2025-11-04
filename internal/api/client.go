@@ -90,11 +90,11 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 		if err != nil {
 			return nil, err
 		}
-		
+
 		// 使用闭包立即关闭 HTTP 连接，避免在循环中累积
 		err = func() error {
 			defer do.Body.Close()
-			
+
 			if do.StatusCode != http.StatusOK {
 				return errors.New(do.Status)
 			}
@@ -102,7 +102,7 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 			if err := json.NewDecoder(do.Body).Decode(&obj); err != nil {
 				return err
 			}
-			
+
 			for _, album := range obj.Data {
 				// 如果启用了 singles-only 模式，只保留单曲专辑
 				if core.Dl_singles_only && relationship == "albums" {
@@ -116,19 +116,19 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 				}
 				options = append(options, []string{album.Attributes.Name, album.Attributes.ReleaseDate, album.ID, album.Attributes.URL})
 			}
-			
+
 			// 检查是否还有下一页
 			if len(obj.Next) == 0 {
 				Num = -1 // 标记为最后一页
 			}
-			
+
 			return nil
 		}()
-		
+
 		if err != nil {
 			return nil, err
 		}
-		
+
 		Num = Num + 100
 		if Num < 0 {
 			break // 已到最后一页
@@ -286,12 +286,12 @@ func GetMeta(albumId string, account *structs.Account, storefront string) (*stru
 			if err != nil {
 				return nil, err
 			}
-			
+
 			// 使用闭包立即关闭 HTTP 连接，避免在循环中累积
 			var hasNext bool
 			err = func() error {
 				defer do.Body.Close()
-				
+
 				if do.StatusCode != http.StatusOK {
 					return errors.New(do.Status)
 				}
@@ -299,20 +299,20 @@ func GetMeta(albumId string, account *structs.Account, storefront string) (*stru
 				if err := json.NewDecoder(do.Body).Decode(&obj2); err != nil {
 					return err
 				}
-				
+
 				for _, value := range obj2.Data {
 					obj.Data[0].Relationships.Tracks.Data = append(obj.Data[0].Relationships.Tracks.Data, value)
 				}
 				next = obj2.Next
 				hasNext = len(next) > 0
-				
+
 				return nil
 			}()
-			
+
 			if err != nil {
 				return nil, err
 			}
-			
+
 			if !hasNext {
 				break
 			}
