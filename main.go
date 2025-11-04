@@ -405,10 +405,15 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 	var workStartTime time.Time
 	if isBatch && core.Config.WorkRestEnabled {
 		workStartTime = time.Now()
+		logger.Debug("[工作-休息] 循环已启用: 工作=%d分钟, 休息=%d分钟, 任务数=%d", 
+			core.Config.WorkDurationMinutes, core.Config.RestDurationMinutes, len(finalUrls))
 		core.SafePrintf("⏰ 工作-休息循环: 工作 %d 分钟 / 休息 %d 分钟\n",
 			core.Config.WorkDurationMinutes,
 			core.Config.RestDurationMinutes)
 		core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
+	} else if isBatch {
+		logger.Debug("[工作-休息] 循环未启用: WorkRestEnabled=%v, 任务数=%d", 
+			core.Config.WorkRestEnabled, len(finalUrls))
 	}
 
 	for i, urlToProcess := range finalUrls {
@@ -435,8 +440,12 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 		if isBatch && core.Config.WorkRestEnabled && i < len(finalUrls)-1 {
 			elapsed := time.Since(workStartTime)
 			workDuration := time.Duration(core.Config.WorkDurationMinutes) * time.Minute
+			
+			logger.Debug("[工作-休息] 检查点: 已工作 %.1f 分钟 / 阈值 %d 分钟, 任务进度 %d/%d", 
+				elapsed.Minutes(), core.Config.WorkDurationMinutes, i+1, len(finalUrls))
 
 			if elapsed >= workDuration {
+				logger.Info("[工作-休息] 达到工作时长阈值，准备进入休息")
 				// 工作时间已到，需要休息
 				restDuration := time.Duration(core.Config.RestDurationMinutes) * time.Minute
 
