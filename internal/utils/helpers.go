@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"main/internal/core"
 )
@@ -99,7 +101,15 @@ func IsInArray(arr []int, target int) bool {
 	return false
 }
 
-// FileExists checks if a file exists at the given path
+// FileValidation contains file validation information
+type FileValidation struct {
+	Exists   bool
+	Size     int64
+	Modified time.Time
+	IsValid  bool
+}
+
+// FileExists checks if a file exists at the given path (legacy function for compatibility)
 func FileExists(path string) (bool, error) {
 	f, err := os.Stat(path)
 	if err == nil {
@@ -108,6 +118,107 @@ func FileExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// ValidateFile checks if a file exists and validates its size
+// minSize: minimum file size in bytes (0 = no size check)
+// Returns FileValidation with detailed information
+func ValidateFile(path string, minSize int64) (*FileValidation, error) {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return &FileValidation{Exists: false, IsValid: false}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("检查文件失败: %w", err)
+	}
+	
+	// 如果是目录，返回不存在
+	if info.IsDir() {
+		return &FileValidation{Exists: false, IsValid: false}, nil
+	}
+	
+	validation := &FileValidation{
+		Exists:   true,
+		Size:     info.Size(),
+		Modified: info.ModTime(),
+		IsValid:  true,
+	}
+	
+	// 文件大小校验（排除半成品）
+	if minSize > 0 && info.Size() < minSize {
+		validation.IsValid = false
+		return validation, fmt.Errorf("文件不完整: 当前 %d 字节 < 预期 %d 字节", 
+			info.Size(), minSize)
+	}
+	
+	return validation, nil
+}
+
+// ValidateFilesBatch validates multiple files concurrently
+// Returns map of path -> validation result
+func ValidateFilesBatch(paths []string, minSize int64, concurrentWorkers int) map[string]*FileValidation {
+	if concurrentWorkers <= 0 {
+		concurrentWorkers = 20 // 默认20个并发
+	}
+	
+	results := make(map[string]*FileValidation)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	
+	// 使用 worker pool 避免过多 goroutine
+	sem := make(chan struct{}, concurrentWorkers)
+	
+	for _, path := range paths {
+		wg.Add(1)
+		go func(p string) {
+			defer wg.Done()
+			sem <- struct{}{}        // 获取信号量
+			defer func() { <-sem }() // 释放信号量
+			
+			validation, err := ValidateFile(p, minSize)
+			
+			mu.Lock()
+			if err != nil {
+				// 如果有错误，标记为无效但保存错误信息
+				if validation == nil {
+					validation = &FileValidation{Exists: false, IsValid: false}
+				}
+			}
+			results[p] = validation
+			mu.Unlock()
+		}(path)
+	}
+	
+	wg.Wait()
+	return results
+}
+
+// EstimateFileSize estimates file size based on quality and format
+// Returns estimated size in bytes (conservative estimate, 80% of typical)
+func EstimateFileSize(codec string, isAtmos bool, duration int) int64 {
+	if duration <= 0 {
+		duration = 180 // 默认3分钟
+	}
+	
+	durationSec := int64(duration) / 1000 // 转换为秒
+	
+	switch {
+	case isAtmos:
+		// Atmos: ~500-800 kbps, 保守估计 500kbps
+		return (durationSec * 500 * 1024 / 8) * 80 / 100
+		
+	case strings.Contains(strings.ToLower(codec), "alac"):
+		// ALAC 48kHz/24bit: ~2500-4000 kbps, 保守估计 2500kbps
+		return (durationSec * 2500 * 1024 / 8) * 80 / 100
+		
+	case strings.Contains(strings.ToLower(codec), "aac"):
+		// AAC 256kbps
+		return (durationSec * 256 * 1024 / 8) * 80 / 100
+		
+	default:
+		// 未知格式，返回最小估计（AAC）
+		return (durationSec * 256 * 1024 / 8) * 80 / 100
+	}
 }
 
 // FormatSpeed formats a download speed from bytes/sec to a human-readable string

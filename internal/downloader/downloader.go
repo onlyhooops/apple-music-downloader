@@ -1101,7 +1101,14 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 			checkSaveFolder = baseSaveFolder
 		}
 
-		allFilesExist := true
+		// 构建所有需要检查的文件路径
+		type trackFileInfo struct {
+			trackNum int
+			filePath string
+			duration int
+		}
+		var filesToCheck []trackFileInfo
+
 		for _, trackNum := range selected {
 			track := meta.Data[0].Relationships.Tracks.Data[trackNum-1]
 
@@ -1164,11 +1171,52 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 			checkAlbumFolder := filepath.Join(checkSingerFolder, checkAlbumDir)
 			checkFilePath := filepath.Join(checkAlbumFolder, checkFilename)
 
-			// 仅使用文件系统检查，不读取内容
-			exists, _ := utils.FileExists(checkFilePath)
-			if !exists {
-				allFilesExist = false
-				break
+			filesToCheck = append(filesToCheck, trackFileInfo{
+				trackNum: trackNum,
+				filePath: checkFilePath,
+				duration: track.Attributes.DurationInMillis,
+			})
+		}
+
+		// 使用并发批量校验或串行校验
+		allFilesExist := true
+		if core.Config.FileValidation.ConcurrentCheckEnabled && len(filesToCheck) > 1 {
+			// 并发批量校验
+			logger.Debug("[文件校验] 使用并发模式检查 %d 个文件 (worker数: %d)",
+				len(filesToCheck), core.Config.FileValidation.ConcurrentWorkers)
+
+			paths := make([]string, len(filesToCheck))
+			for i, info := range filesToCheck {
+				paths[i] = info.filePath
+			}
+
+			// 估算最小文件大小
+			var minSize int64
+			if core.Config.FileValidation.SizeCheckEnabled && len(filesToCheck) > 0 {
+				minSize = utils.EstimateFileSize(Codec, core.Dl_atmos, filesToCheck[0].duration)
+				logger.Debug("[文件校验] 最小文件大小: %d 字节 (~%.1f MB)", minSize, float64(minSize)/(1024*1024))
+			}
+
+			results := utils.ValidateFilesBatch(paths, minSize, core.Config.FileValidation.ConcurrentWorkers)
+			for _, validation := range results {
+				if !validation.Exists || !validation.IsValid {
+					allFilesExist = false
+					break
+				}
+			}
+		} else {
+			// 串行校验（向后兼容）
+			for _, info := range filesToCheck {
+				var minSize int64
+				if core.Config.FileValidation.SizeCheckEnabled {
+					minSize = utils.EstimateFileSize(Codec, core.Dl_atmos, info.duration)
+				}
+
+				validation, _ := utils.ValidateFile(info.filePath, minSize)
+				if !validation.Exists || !validation.IsValid {
+					allFilesExist = false
+					break
+				}
 			}
 		}
 

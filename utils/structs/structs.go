@@ -67,8 +67,16 @@ type ConfigSet struct {
 	RestDurationMinutes      int                `yaml:"rest-duration-minutes"`       // 休息时长（分钟）
 	Logging                  LoggingConfig      `yaml:"logging"`                     // 日志配置
 	EnableVirtualSingles     bool               `yaml:"enable-virtual-singles"`      // 是否启用虚拟Singles专辑
-	VirtualSinglesFolderName string             `yaml:"virtual-singles-folder-name"` // 虚拟单曲专辑的文件夹名称
-	LocalWrapperOptimization LocalWrapperConfig `yaml:"local-wrapper-optimization"`  // 本地 wrapper 服务优化配置
+	VirtualSinglesFolderName string                `yaml:"virtual-singles-folder-name"` // 虚拟单曲专辑的文件夹名称
+	FileValidation           FileValidationConfig  `yaml:"file-validation"`             // 文件校验配置
+	LocalWrapperOptimization LocalWrapperConfig    `yaml:"local-wrapper-optimization"`  // 本地 wrapper 服务优化配置
+}
+
+// FileValidationConfig 文件校验配置
+type FileValidationConfig struct {
+	SizeCheckEnabled       bool `yaml:"size-check-enabled"`        // 是否启用文件大小检查
+	ConcurrentCheckEnabled bool `yaml:"concurrent-check-enabled"`  // 是否启用并发校验
+	ConcurrentWorkers      int  `yaml:"concurrent-workers"`        // 并发worker数量
 }
 
 // LocalWrapperConfig 本地 wrapper 服务优化配置
