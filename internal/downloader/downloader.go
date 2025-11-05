@@ -1232,6 +1232,17 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 				core.Counter.Success++
 				core.SharedLock.Unlock()
 			}
+
+			// 清理可能存在的缓存目录（避免后续转移流程）
+			if usingCache {
+				cacheHashDir := baseSaveFolder
+				if err := utils.CleanupCacheDirectory(cacheHashDir); err != nil {
+					logger.Debug("[缓存清理] 清理缓存目录: %v", err)
+				} else {
+					logger.Debug("[缓存清理] 已清理可能存在的缓存目录")
+				}
+			}
+
 			return nil
 		}
 	} else {
@@ -1587,29 +1598,36 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 	logger.Info("%s", strings.Repeat("-", 45))
 
 	// 只有在下载真正成功后才转移缓存文件
+	// 优化：检查缓存目录是否存在，不存在则直接跳过
 	if usingCache {
 		cacheHashDir := baseSaveFolder // 缓存的hash子目录，如: Cache/07b01b1d847fa876
 
-		// 统计需要转移的文件
-		actualMusicFiles := 0
-		filepath.Walk(cacheHashDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return nil
-			}
-			if !info.IsDir() && (strings.HasSuffix(path, ".m4a") || strings.HasSuffix(path, ".mp3") || strings.HasSuffix(path, ".mp4")) {
-				actualMusicFiles++
-			}
+		// 快速检查：缓存目录是否存在
+		cacheInfo, err := os.Stat(cacheHashDir)
+		if err != nil || !cacheInfo.IsDir() {
+			// 缓存目录不存在或无法访问，跳过转移
+			logger.Debug("[文件转移] 缓存目录不存在，跳过转移: %s", cacheHashDir)
+			downloadSuccess = true
 			return nil
-		})
+		}
 
-		// 扫描所有需要转移的文件
+		// 统计需要转移的文件（优化：一次扫描完成统计和检测）
+		actualMusicFiles := 0
 		hasFilesToMove := false
 		filepath.Walk(cacheHashDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
+			if err != nil || path == cacheHashDir {
 				return nil
 			}
-			if !info.IsDir() && (strings.HasSuffix(path, ".m4a") || strings.HasSuffix(path, ".mp4") || strings.HasSuffix(path, ".jpg")) {
-				hasFilesToMove = true
+			if !info.IsDir() {
+				if strings.HasSuffix(path, ".m4a") || strings.HasSuffix(path, ".mp3") || strings.HasSuffix(path, ".mp4") {
+					actualMusicFiles++
+					hasFilesToMove = true
+				} else if strings.HasSuffix(path, ".jpg") {
+					hasFilesToMove = true
+				}
+			}
+			// 找到第一个音频文件后就可以提前终止遍历（优化）
+			if actualMusicFiles > 0 {
 				return filepath.SkipDir
 			}
 			return nil
