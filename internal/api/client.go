@@ -77,8 +77,13 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 	var args []string
 	var urls []string
 	var options [][]string
-	for {
-		req, err := http.NewRequest("GET", fmt.Sprintf("https://amp-api.music.apple.com/v1/catalog/%s/artists/%s/%s?limit=100&offset=%d&l=%s", storefront, artistId, relationship, Num, core.Config.Language), nil)
+	var hasMore bool = true
+	for hasMore {
+		apiURL := fmt.Sprintf("https://amp-api.music.apple.com/v1/catalog/%s/artists/%s/%s?limit=100&offset=%d&l=%s", storefront, artistId, relationship, Num, core.Config.Language)
+		logger.Debug("[API] 请求艺术家 API: %s", apiURL)
+		logger.Debug("[API] Token长度: %d", len(core.DeveloperToken))
+
+		req, err := http.NewRequest("GET", apiURL, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -119,9 +124,9 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 
 			// 检查是否还有下一页
 			if len(obj.Next) == 0 {
-				Num = -1 // 标记为最后一页
+				logger.Debug("[API] 已到达最后一页，共获取 %d 项", len(options))
+				hasMore = false
 			}
-
 			return nil
 		}()
 
@@ -130,9 +135,6 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 		}
 
 		Num = Num + 100
-		if Num < 0 {
-			break // 已到最后一页
-		}
 	}
 	sort.Slice(options, func(i, j int) bool {
 		dateI, _ := time.Parse("2006-01-02", options[i][1])
