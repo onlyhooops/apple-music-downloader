@@ -388,6 +388,9 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 				continue
 			}
 
+			// 保存URL艺术家名，用于虚拟Singles专辑归类
+			core.UrlArtistName = urlArtistName
+
 			core.Config.ArtistFolderFormat = strings.NewReplacer(
 				"{UrlArtistName}", core.LimitString(urlArtistName),
 				"{ArtistId}", urlArtistID,

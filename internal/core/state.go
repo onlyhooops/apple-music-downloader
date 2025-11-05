@@ -48,6 +48,8 @@ var (
 	// 存储每个track的有效曲目编号（用于确保文件名和标签使用相同的编号）
 	trackEffectiveNumbers = make(map[string]int) // key: trackID, value: 有效的曲目编号
 	trackEffectiveLock    sync.RWMutex           // 使用 RWMutex 优化读多写少场景
+	// 艺术家模式：保存URL中的艺术家名（用于虚拟Singles专辑归类）
+	UrlArtistName string // 艺术家模式下，URL中的艺术家名称
 )
 
 type TrackStatus struct {
