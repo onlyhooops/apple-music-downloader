@@ -306,12 +306,75 @@ func parseTxtFile(filePath string) ([]string, error) {
 	return urls, nil
 }
 
+// detectDownloadMode 检测下载模式类型
+func detectDownloadMode(urls []string) string {
+	if len(urls) == 0 {
+		return "未知模式"
+	}
+
+	hasArtist := false
+	hasAlbum := false
+	hasPlaylist := false
+	hasMV := false
+	hasSong := false
+
+	for _, url := range urls {
+		if strings.Contains(url, "/artist/") {
+			hasArtist = true
+		} else if strings.Contains(url, "/music-video/") {
+			hasMV = true
+		} else if strings.Contains(url, "/playlist/") {
+			hasPlaylist = true
+		} else if strings.Contains(url, "/album/") {
+			hasAlbum = true
+		} else if strings.Contains(url, "/song/") {
+			hasSong = true
+		}
+	}
+
+	// 统计有多少种类型
+	modeCount := 0
+	var mode string
+
+	if hasArtist {
+		modeCount++
+		mode = "艺术家模式"
+	}
+	if hasAlbum {
+		modeCount++
+		mode = "专辑模式"
+	}
+	if hasPlaylist {
+		modeCount++
+		mode = "播放列表模式"
+	}
+	if hasMV {
+		modeCount++
+		mode = "MV模式"
+	}
+	if hasSong {
+		modeCount++
+		mode = "单曲模式"
+	}
+
+	// 如果是多种类型混合
+	if modeCount > 1 {
+		return "混合模式"
+	}
+
+	return mode
+}
+
 func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
 	var finalUrls []string
+
+	// 检测下载模式
+	downloadMode := detectDownloadMode(initialUrls)
 
 	// 显示输入链接统计
 	if isBatch && len(initialUrls) > 0 {
 		core.SafePrintf("📋 初始链接总数: %d\n", len(initialUrls))
+		core.SafePrintf("🎯 下载模式: %s\n", downloadMode)
 		core.SafePrintf("🔄 开始预处理链接...\n\n")
 	}
 
@@ -384,6 +447,7 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 
 	if isBatch {
 		core.SafePrintf("\n📋 ===== 开始下载任务 =====\n")
+		core.SafePrintf("🎯 下载模式: %s\n", downloadMode)
 		if len(initialUrls) != totalTasks {
 			core.SafePrintf("📝 预处理完成: %d → %d 任务\n", len(initialUrls), originalTotalTasks)
 		} else {
@@ -396,7 +460,7 @@ func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskF
 		core.SafePrintf("📦 专辑内并发: 由配置控制\n")
 		core.SafePrintf("=============================\n")
 	} else {
-		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n", originalTotalTasks)
+		core.SafePrintf("📋 开始下载任务\n🎯 模式: %s\n📝 总数: %d\n", downloadMode, originalTotalTasks)
 	}
 
 	// 批量模式：串行执行（按链接顺序依次下载）
