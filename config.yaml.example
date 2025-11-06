@@ -130,6 +130,20 @@ apple-master-choice: "[M]"                              # Apple Digital Master �
 use-songinfo-for-playlist: false                        # 是否为播放列表使用歌曲信息
 dl-albumcover-for-playlist: false                       # 是否为播放列表下载专辑封面
 
+# ========== 本地 Wrapper 服务优化 ==========
+# 当 wrapper 解密服务与下载器部署在同一服务器时，启用此优化可显著提升性能
+# 如果 wrapper 服务部署在远程服务器，请设置 enabled: false
+local-wrapper-optimization:
+  enabled: true                                         # 是否启用本地优化模式（远程部署请设为 false）
+  max-idle-conns: 200                                   # 最大空闲连接数（默认200，本地服务可承受更多）
+  max-idle-conns-per-host: 100                          # 每个端口的最大空闲连接数（默认100）
+  max-conns-per-host: 0                                 # 每个端口的最大连接数（0=不限制）
+  idle-conn-timeout-sec: 300                            # 空闲连接保持时间（秒，默认300=5分钟）
+  dial-timeout-ms: 100                                  # 连接超时（毫秒，默认100，本地连接应该很快）
+  keep-alive: true                                      # 是否启用 TCP KeepAlive（默认true）
+  disable-compression: true                             # 是否禁用压缩（默认true，本地通讯无需压缩）
+  expect-continue-time-ms: 100                          # Expect: 100-continue 超时（毫秒，默认100）
+
 # ========== 日志配置 ==========
 logging:
   level: info                                           # 日志等级: debug/info/warn/error

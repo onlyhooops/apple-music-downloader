@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"log"
 	"net/url"
@@ -15,9 +16,11 @@ import (
 	"time"
 
 	"main/internal/api"
+	"main/internal/constants"
 	"main/internal/core"
 	"main/internal/downloader"
 	"main/internal/logger"
+	"main/internal/network"
 	"main/internal/parser"
 	"main/internal/progress"
 	"main/internal/ui"
@@ -78,8 +81,8 @@ func handleSingleMV(urlRaw string) {
 	core.Counter.Total++
 	core.SharedLock.Unlock()
 
-	if len(accountForMV.MediaUserToken) <= 50 {
-		logger.Error("MV 下载失败: MediaUserToken 无效或过短（长度: %d）", len(accountForMV.MediaUserToken))
+	if len(accountForMV.MediaUserToken) < constants.MinTokenLength {
+		logger.Error("MV 下载失败: MediaUserToken 无效或过短")
 		logger.Info("提示: 请确保在 dev.env 中配置了有效的 APPLE_MUSIC_MEDIA_USER_TOKEN_CN")
 		core.SharedLock.Lock()
 		core.Counter.Error++
@@ -194,12 +197,20 @@ func handleSingleMV(urlRaw string) {
 	core.SharedLock.Unlock()
 }
 
-func processURL(urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int, notifier *progress.ProgressNotifier) (string, string, error) {
+func processURL(ctx context.Context, urlRaw string, wg *sync.WaitGroup, semaphore chan struct{}, currentTask int, totalTasks int, notifier *progress.ProgressNotifier) (string, string, error) {
 	if wg != nil {
 		defer wg.Done()
 	}
 	if semaphore != nil {
 		defer func() { <-semaphore }()
+	}
+
+	// 检查 context 是否已取消
+	select {
+	case <-ctx.Done():
+		logger.Info("任务已取消: %s", urlRaw)
+		return "", "", ctx.Err()
+	default:
 	}
 
 	if totalTasks > 1 {
@@ -295,12 +306,75 @@ func parseTxtFile(filePath string) ([]string, error) {
 	return urls, nil
 }
 
-func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
+// detectDownloadMode 检测下载模式类型
+func detectDownloadMode(urls []string) string {
+	if len(urls) == 0 {
+		return "未知模式"
+	}
+
+	hasArtist := false
+	hasAlbum := false
+	hasPlaylist := false
+	hasMV := false
+	hasSong := false
+
+	for _, url := range urls {
+		if strings.Contains(url, "/artist/") {
+			hasArtist = true
+		} else if strings.Contains(url, "/music-video/") {
+			hasMV = true
+		} else if strings.Contains(url, "/playlist/") {
+			hasPlaylist = true
+		} else if strings.Contains(url, "/album/") {
+			hasAlbum = true
+		} else if strings.Contains(url, "/song/") {
+			hasSong = true
+		}
+	}
+
+	// 统计有多少种类型
+	modeCount := 0
+	var mode string
+
+	if hasArtist {
+		modeCount++
+		mode = "艺术家模式"
+	}
+	if hasAlbum {
+		modeCount++
+		mode = "专辑模式"
+	}
+	if hasPlaylist {
+		modeCount++
+		mode = "播放列表模式"
+	}
+	if hasMV {
+		modeCount++
+		mode = "MV模式"
+	}
+	if hasSong {
+		modeCount++
+		mode = "单曲模式"
+	}
+
+	// 如果是多种类型混合
+	if modeCount > 1 {
+		return "混合模式"
+	}
+
+	return mode
+}
+
+func runDownloads(ctx context.Context, initialUrls []string, isBatch bool, taskFile string, notifier *progress.ProgressNotifier) {
 	var finalUrls []string
+
+	// 检测下载模式
+	downloadMode := detectDownloadMode(initialUrls)
 
 	// 显示输入链接统计
 	if isBatch && len(initialUrls) > 0 {
 		core.SafePrintf("📋 初始链接总数: %d\n", len(initialUrls))
+		core.SafePrintf("🎯 下载模式: %s\n", downloadMode)
 		core.SafePrintf("🔄 开始预处理链接...\n\n")
 	}
 
@@ -373,6 +447,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 
 	if isBatch {
 		core.SafePrintf("\n📋 ===== 开始下载任务 =====\n")
+		core.SafePrintf("🎯 下载模式: %s\n", downloadMode)
 		if len(initialUrls) != totalTasks {
 			core.SafePrintf("📝 预处理完成: %d → %d 任务\n", len(initialUrls), originalTotalTasks)
 		} else {
@@ -385,7 +460,7 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 		core.SafePrintf("📦 专辑内并发: 由配置控制\n")
 		core.SafePrintf("=============================\n")
 	} else {
-		core.SafePrintf("📋 开始下载任务\n📝 总数: %d\n", originalTotalTasks)
+		core.SafePrintf("📋 开始下载任务\n🎯 模式: %s\n📝 总数: %d\n", downloadMode, originalTotalTasks)
 	}
 
 	// 批量模式：串行执行（按链接顺序依次下载）
@@ -395,22 +470,35 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 	var workStartTime time.Time
 	if isBatch && core.Config.WorkRestEnabled {
 		workStartTime = time.Now()
+		logger.Debug("[工作-休息] 循环已启用: 工作=%d分钟, 休息=%d分钟, 任务数=%d",
+			core.Config.WorkDurationMinutes, core.Config.RestDurationMinutes, len(finalUrls))
 		core.SafePrintf("⏰ 工作-休息循环: 工作 %d 分钟 / 休息 %d 分钟\n",
 			core.Config.WorkDurationMinutes,
 			core.Config.RestDurationMinutes)
 		core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
+	} else if isBatch {
+		logger.Debug("[工作-休息] 循环未启用: WorkRestEnabled=%v, 任务数=%d",
+			core.Config.WorkRestEnabled, len(finalUrls))
 	}
 
 	for i, urlToProcess := range finalUrls {
+		// 检查 context 是否已取消
+		select {
+		case <-ctx.Done():
+			logger.Warn("下载已中断，已完成 %d/%d 个任务", i, len(finalUrls))
+			return
+		default:
+		}
+
 		// 计算实际的任务编号（考虑 --start 参数）
 		actualTaskNum := i + 1 + startIndex    // 实际编号 = 当前索引 + 1 + 跳过的数量
 		originalTotalTasks := len(initialUrls) // 原始总数（包括被跳过的）
 
-		_, _, _ = processURL(urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
+		_, _, _ = processURL(ctx, urlToProcess, nil, nil, actualTaskNum, originalTotalTasks, notifier)
 
 		// 任务之间添加视觉间隔（最后一个任务不需要）
 		if isBatch && i < len(finalUrls)-1 {
-			core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+			core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 		}
 
 		// 工作-休息循环检查（在任务完成后）
@@ -418,7 +506,11 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 			elapsed := time.Since(workStartTime)
 			workDuration := time.Duration(core.Config.WorkDurationMinutes) * time.Minute
 
+			logger.Debug("[工作-休息] 检查点: 已工作 %.1f 分钟 / 阈值 %d 分钟, 任务进度 %d/%d",
+				elapsed.Minutes(), core.Config.WorkDurationMinutes, i+1, len(finalUrls))
+
 			if elapsed >= workDuration {
+				logger.Info("[工作-休息] 达到工作时长阈值，准备进入休息")
 				// 工作时间已到，需要休息
 				restDuration := time.Duration(core.Config.RestDurationMinutes) * time.Minute
 
@@ -426,16 +518,16 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 				yellow := color.New(color.FgYellow)
 				green := color.New(color.FgGreen)
 
-				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 				cyan.Printf("⏸️  已工作 %d 分钟，进入休息\n", core.Config.WorkDurationMinutes)
 				yellow.Printf("😴 休息 %d 分钟\n", core.Config.RestDurationMinutes)
 				core.SafePrintf("📊 已完成: %d/%d\n", i+1, totalTasks)
 				core.SafePrintf("⏰ 当前时间: %s\n", time.Now().Format("15:04:05"))
 				core.SafePrintf("⏱️  恢复时间: %s\n", time.Now().Add(restDuration).Format("15:04:05"))
-				core.SafePrintf("%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 
 				// 休息倒计时（每30秒提示一次）
-				restTicker := time.NewTicker(30 * time.Second)
+				restTicker := time.NewTicker(constants.RestTickerInterval)
 				restTimer := time.NewTimer(restDuration)
 				restStartTime := time.Now()
 
@@ -459,10 +551,10 @@ func runDownloads(initialUrls []string, isBatch bool, taskFile string, notifier 
 
 				// 休息结束，重新开始计时
 				workStartTime = time.Now()
-				core.SafePrintf("\n%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("\n%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 				green.Printf("✅ 休息完毕，继续任务\n")
 				core.SafePrintf("⏱️  工作开始: %s\n", workStartTime.Format("15:04:05"))
-				core.SafePrintf("%s\n", strings.Repeat("=", 60))
+				core.SafePrintf("%s\n", strings.Repeat("=", constants.VisualSeparatorLength))
 			}
 		}
 	}
@@ -476,7 +568,7 @@ func main() {
 	// 打印版本信息
 	cyan := color.New(color.FgCyan, color.Bold)
 	yellow := color.New(color.FgYellow)
-	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
+	fmt.Println(strings.Repeat("=", constants.BannerSeparatorLength)) // OK: 程序启动横幅
 	cyan.Printf("🎵 Apple Music Downloader %s\n", Version)
 
 	// 显示编译时间（本地时间）
@@ -489,8 +581,8 @@ func main() {
 	if GitCommit != "unknown" {
 		yellow.Printf("🔖 Git提交: %s\n", GitCommit)
 	}
-	fmt.Println(strings.Repeat("=", 80)) // OK: 程序启动横幅
-	fmt.Println()                        // OK: 程序启动横幅
+	fmt.Println(strings.Repeat("=", constants.BannerSeparatorLength)) // OK: 程序启动横幅
+	fmt.Println()                                                     // OK: 程序启动横幅
 
 	core.InitFlags()
 
@@ -542,13 +634,28 @@ func main() {
 		return
 	}
 
+	// 初始化网络客户端（包括本地 wrapper 优化）
+	network.InitializeClients(&core.Config)
+
+	// 创建可取消的 context 用于优雅退出
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// 设置信号处理，确保程序退出时清理资源
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
 		<-sigChan
 		yellow := color.New(color.FgYellow)
-		yellow.Printf("\n\n⚠️  收到终止信号，正在清理资源...\n")
+		yellow.Printf("\n\n⚠️  收到中断信号，正在安全退出...\n")
+
+		// 取消所有进行中的任务
+		cancel()
+
+		// 等待清理完成
+		time.Sleep(constants.CleanupWaitSeconds * time.Second)
+
+		yellow.Printf("✅ 清理完成\n")
 		yellow.Printf("👋 再见！\n")
 		os.Exit(0)
 	}()
@@ -595,13 +702,13 @@ func main() {
 					return
 				}
 				logger.Info("📊 从文件 %s 中解析到 %d 个链接\n", input, len(urls))
-				runDownloads(urls, true, input, progressNotifier)
+				runDownloads(ctx, urls, true, input, progressNotifier)
 			} else {
 				logger.Error("错误: 文件不存在 %s", input)
 				return
 			}
 		} else {
-			runDownloads([]string{input}, false, "", progressNotifier)
+			runDownloads(ctx, []string{input}, false, "", progressNotifier)
 		}
 	} else {
 		// 处理命令行参数：支持TXT文件或直接的URL列表
@@ -642,7 +749,7 @@ func main() {
 			if isBatch {
 				logger.Info("")
 			}
-			runDownloads(urls, isBatch, taskFile, progressNotifier)
+			runDownloads(ctx, urls, isBatch, taskFile, progressNotifier)
 		} else {
 			logger.Warn("没有有效的链接可供处理。")
 		}
