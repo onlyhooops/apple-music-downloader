@@ -73,10 +73,18 @@ func GetUrlArtistName(urlRaw string, account *structs.Account) (string, string, 
 // CheckArtist retrieves and displays albums or music videos for an artist for selection
 func CheckArtist(artistUrl string, account *structs.Account, relationship string) ([]string, error) {
 	storefront, artistId := parser.CheckUrlArtist(artistUrl)
+
+	// 获取目标艺术家的名称（用于过滤参与作品）
+	targetArtistName, _, err := GetUrlArtistName(artistUrl, account)
+	if err != nil {
+		return nil, fmt.Errorf("获取目标艺术家名称失败: %w", err)
+	}
+
 	Num := 0
 	var args []string
 	var urls []string
 	var options [][]string
+	var filteredCount int // 统计被过滤的作品数量
 	var hasMore bool = true
 	for hasMore {
 		apiURL := fmt.Sprintf("https://amp-api.music.apple.com/v1/catalog/%s/artists/%s/%s?limit=100&offset=%d&l=%s", storefront, artistId, relationship, Num, core.Config.Language)
@@ -109,6 +117,25 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 			}
 
 			for _, album := range obj.Data {
+				// 过滤参与作品和合作作品：只保留主艺术家为目标艺术家的专辑
+				// 严格模式：目标艺术家必须是专辑的第一作者/主艺术家
+				if relationship == "albums" && album.Attributes.ArtistName != "" {
+					albumArtist := album.Attributes.ArtistName
+					// 提取主要艺术家（第一作者）进行比较
+					primaryArtist := core.GetPrimaryArtist(albumArtist)
+					
+					// 只保留主艺术家完全匹配目标艺术家的作品
+					// 过滤掉：
+					// 1. 主艺术家是其他人的作品（纯参与作品）
+					// 2. 目标艺术家不是第一作者的合作作品（如 "王加一 & 陈婧霏"）
+					if !strings.EqualFold(primaryArtist, targetArtistName) {
+						logger.Debug("[艺术家过滤] 跳过非主要作品: '%s' (专辑主艺术家: '%s', 目标艺术家: '%s')", 
+							album.Attributes.Name, primaryArtist, targetArtistName)
+						filteredCount++
+						continue
+					}
+				}
+
 				// 如果启用了 singles-only 模式，只保留单曲专辑
 				if core.Dl_singles_only && relationship == "albums" {
 					isSingle := album.Attributes.IsSingle ||
@@ -136,6 +163,12 @@ func CheckArtist(artistUrl string, account *structs.Account, relationship string
 
 		Num = Num + 100
 	}
+
+	// 输出过滤统计信息
+	if filteredCount > 0 {
+		logger.Info("🔍 已过滤 %d 个参与作品（非主要作品），保留 %d 个主要作品", filteredCount, len(options))
+	}
+
 	sort.Slice(options, func(i, j int) bool {
 		dateI, _ := time.Parse("2006-01-02", options[i][1])
 		dateJ, _ := time.Parse("2006-01-02", options[j][1])

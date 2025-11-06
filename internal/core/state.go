@@ -343,11 +343,14 @@ func ResetVirtualSinglesTrackNumber(artistName string) {
 }
 
 // GetPrimaryArtist 从艺术家名称字符串中提取主要艺术家
-// 处理合作者情况：如果包含 " & " 或 " ft. " 等，则返回第一个艺术家
+// 处理合作者情况：如果包含 " & " 或 " ft. " 或 ", " 等，则返回第一个艺术家
 // 示例: "Olivia Rodrigo & Joshua Bassett" -> "Olivia Rodrigo"
+//
+//	"好妹妹, 秦昊Jeff, 张小厚" -> "好妹妹"
 func GetPrimaryArtist(artistName string) string {
-	// 处理常见的合作分隔符
-	separators := []string{" & ", " ft. ", " feat. ", " featuring "}
+	// 处理常见的合作分隔符（按优先级排序）
+	// 优先检查英文分隔符（更明确的合作标识）
+	separators := []string{" & ", " ft. ", " feat. ", " featuring ", " / ", ", ", "、"}
 
 	for _, sep := range separators {
 		if idx := strings.Index(strings.ToLower(artistName), strings.ToLower(sep)); idx != -1 {

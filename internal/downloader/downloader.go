@@ -786,11 +786,22 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 		}
 	}()
 
+	// 检查是否为虚拟Singles专辑（需要提前检查以正确设置艺术家文件夹）
+	isSingle = core.IsSingleAlbum(meta)
+
 	var singerFoldername, albumFoldername string
 	if core.Config.ArtistFolderFormat != "" {
 		if strings.Contains(albumId, "pl.") {
 			singerFoldername = strings.NewReplacer(
 				"{ArtistName}", "Apple Music", "{ArtistId}", "", "{UrlArtistName}", "Apple Music",
+			).Replace(core.Config.ArtistFolderFormat)
+		} else if isSingle {
+			// 对于虚拟Singles专辑，艺术家文件夹也应使用主要艺术家（避免合作艺术家分散）
+			primaryArtist := core.GetPrimaryArtist(meta.Data[0].Attributes.ArtistName)
+			singerFoldername = strings.NewReplacer(
+				"{UrlArtistName}", core.LimitString(primaryArtist),
+				"{ArtistName}", core.LimitString(primaryArtist),
+				"{ArtistId}", "", // Singles 专辑不需要艺术家ID
 			).Replace(core.Config.ArtistFolderFormat)
 		} else if len(meta.Data[0].Relationships.Artists.Data) > 0 {
 			singerFoldername = strings.NewReplacer(
@@ -860,9 +871,6 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 			Album_Tag_string = utils.FormatQualityTag("Aac 256")
 		}
 	}
-
-	// 检查是否为虚拟Singles专辑
-	isSingle = core.IsSingleAlbum(meta)
 
 	if strings.Contains(albumId, "pl.") {
 		albumFoldername = strings.NewReplacer(
@@ -1120,6 +1128,14 @@ func Rip(albumId string, storefront string, urlArg_i string, urlRaw string, noti
 				if strings.Contains(albumId, "pl.") {
 					singerFoldername = strings.NewReplacer(
 						"{ArtistName}", "Apple Music", "{ArtistId}", "", "{UrlArtistName}", "Apple Music",
+					).Replace(core.Config.ArtistFolderFormat)
+				} else if isSingle {
+					// 对于虚拟Singles专辑，艺术家文件夹也应使用主要艺术家
+					primaryArtist := core.GetPrimaryArtist(meta.Data[0].Attributes.ArtistName)
+					singerFoldername = strings.NewReplacer(
+						"{UrlArtistName}", core.LimitString(primaryArtist),
+						"{ArtistName}", core.LimitString(primaryArtist),
+						"{ArtistId}", "",
 					).Replace(core.Config.ArtistFolderFormat)
 				} else if len(meta.Data[0].Relationships.Artists.Data) > 0 {
 					singerFoldername = strings.NewReplacer(

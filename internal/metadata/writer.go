@@ -55,6 +55,92 @@ func getQualityString(audioTraits []string) string {
 	return utils.FormatQualityTag("Aac 256")
 }
 
+// normalizeCoverAspectRatio 标准化封面图片为正方形（1:1比例）
+// 对于非正方形图片，使用中心裁剪方式
+// 参数:
+//   - inputPath: 输入图片路径
+//
+// 返回:
+//   - error: 处理过程中的错误
+func normalizeCoverAspectRatio(inputPath string) error {
+	// 检查 ffmpeg 是否存在
+	_, err := exec.LookPath("ffmpeg")
+	if err != nil {
+		// ffmpeg 不存在时，跳过标准化（保留原始封面）
+		return nil
+	}
+
+	// 使用 ffprobe 检查图片尺寸
+	probeCmd := exec.Command("ffprobe", "-v", "error", "-select_streams", "v:0",
+		"-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", inputPath)
+
+	output, err := probeCmd.Output()
+	if err != nil {
+		// 如果 ffprobe 失败，跳过标准化
+		return nil
+	}
+
+	// 解析宽度和高度
+	dimensions := strings.TrimSpace(string(output))
+	parts := strings.Split(dimensions, "x")
+	if len(parts) != 2 {
+		return nil
+	}
+
+	width, err1 := strconv.Atoi(parts[0])
+	height, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil {
+		return nil
+	}
+
+	// 如果已经是正方形，无需处理
+	if width == height {
+		return nil
+	}
+
+	// 创建临时文件
+	tempPath := inputPath + ".normalized.tmp"
+	defer os.Remove(tempPath)
+
+	// 计算裁剪参数（中心裁剪）
+	var cropFilter string
+	if width > height {
+		// 横向图片，裁剪左右
+		cropFilter = fmt.Sprintf("crop=%d:%d:(iw-%d)/2:0", height, height, height)
+	} else {
+		// 纵向图片，裁剪上下
+		cropFilter = fmt.Sprintf("crop=%d:%d:0:(ih-%d)/2", width, width, width)
+	}
+
+	// 使用 ffmpeg 裁剪为正方形
+	cmd := exec.Command("ffmpeg", "-i", inputPath, "-vf", cropFilter,
+		"-q:v", "2", "-y", tempPath)
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		// 裁剪失败，保留原始封面
+		return nil
+	}
+
+	// 检查输出文件
+	if _, err := os.Stat(tempPath); err != nil {
+		return nil
+	}
+
+	// 替换原文件
+	if err := os.Remove(inputPath); err != nil {
+		return nil
+	}
+
+	if err := os.Rename(tempPath, inputPath); err != nil {
+		return nil
+	}
+
+	return nil
+}
+
 func WriteCover(sanAlbumFolder, name string, url string) (string, error) {
 	covPath := filepath.Join(sanAlbumFolder, name+"."+core.Config.CoverFormat)
 	if core.Config.CoverFormat == "original" {
@@ -101,6 +187,16 @@ func WriteCover(sanAlbumFolder, name string, url string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// 标准化封面比例（裁剪为正方形）
+	// 如果启用了封面内嵌，则进行标准化处理
+	if core.Config.EmbedCover {
+		if normalizeErr := normalizeCoverAspectRatio(covPath); normalizeErr != nil {
+			// 标准化失败不影响整体流程，只记录警告
+			// 保留原始封面继续使用
+		}
+	}
+
 	return covPath, nil
 }
 
